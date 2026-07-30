@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f7f4" />
+    <meta name="description" content="Standby AI voice agents recover cancelled appointments before the hour disappears." />
+    <link rel="icon" type="image/png" href="/landing/standby-favicon.png" />
+    <link rel="preload" as="image" href="/landing/standby-mark.webp" type="image/webp" />
+    <script>
+      if ((location.pathname.replace(/\/+$/, "") || "/") === "/app") {
+        const stylesheetOrigin = document.createElement("link");
+        stylesheetOrigin.rel = "preconnect";
+        stylesheetOrigin.href = "https://fonts.googleapis.com";
+
+        const fontOrigin = document.createElement("link");
+        fontOrigin.rel = "preconnect";
+        fontOrigin.href = "https://fonts.gstatic.com";
+        fontOrigin.crossOrigin = "";
+
+        const fontStyles = document.createElement("link");
+        fontStyles.rel = "stylesheet";
+        fontStyles.href = "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap";
+
+        document.head.append(stylesheetOrigin, fontOrigin, fontStyles);
+      }
+    </script>
+    <title>Standby — Empty time, filled beautifully.</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/web/main.tsx"></script>
+  </body>
+</html>
