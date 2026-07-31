@@ -500,13 +500,11 @@ export function LandingPage() {
                   )}
                   key={card.number}
                 >
-                  <span
-                    aria-hidden="true"
-                    className="grid h-11 w-11 place-items-center rounded-[11px] border border-[#c9d2dc] bg-[#eaf0f6] text-[#34465d]"
-                  >
-                    <card.icon className="h-5 w-5" strokeWidth={1.7} />
+                  <span aria-hidden="true" className="flex h-11 items-center gap-3 text-landing-ink">
+                    <card.icon className="h-7 w-7" strokeWidth={1.55} />
+                    <span className="h-[2px] w-7 bg-landing-coral" />
                   </span>
-                  <h3 className="mb-[11px] mt-[27px] text-[25px] font-semibold tracking-[-0.04em]">
+                  <h3 className="mb-[11px] mt-[23px] text-[25px] font-semibold tracking-[-0.04em]">
                     {card.title}
                   </h3>
                   <p className="m-0 max-w-[320px] text-[14px] leading-[1.55] text-landing-muted">
@@ -559,9 +557,9 @@ export function LandingPage() {
                 >
                   <span
                     aria-hidden="true"
-                    className="grid h-11 w-11 place-items-center rounded-[11px] border border-[#c9d2dc] bg-[#eaf0f6] text-[#34465d]"
+                    className="flex h-11 w-11 items-center text-landing-ink"
                   >
-                    <workflow.icon className="h-5 w-5" strokeWidth={1.8} />
+                    <workflow.icon className="h-7 w-7" strokeWidth={1.55} />
                   </span>
                   <div>
                     <h3 className="mb-[7px] mt-0.5 text-[20px] font-semibold tracking-[-0.035em]">
