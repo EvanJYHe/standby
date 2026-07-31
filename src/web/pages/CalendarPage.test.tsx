@@ -270,6 +270,8 @@ describe("CalendarPage", () => {
     expect(within(shortAppointment).getByText("3:00 PM · Devon")).toBeInTheDocument();
 
     const fullAppointment = screen.getByRole("button", { name: /Sarah, Signature haircut/ });
+    expect(fullAppointment).not.toHaveClass("border-l-[3px]");
+    expect(fullAppointment.style.borderLeftColor).toBe("");
     expect(within(fullAppointment).getByText("6:00 PM–7:00 PM")).toBeInTheDocument();
     expect(within(fullAppointment).getByText("Jeremy")).toBeInTheDocument();
   });

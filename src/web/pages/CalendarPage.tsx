@@ -137,7 +137,7 @@ function AppointmentCard({ appointment, timezone, onOpen, compact = false, style
     <button
       aria-label={`${appointment.customerName}, ${appointment.serviceName}, ${timeLabel(appointment.startAt, timezone)}`}
       className={cn(
-        "calendar-card z-10 overflow-hidden rounded-[6px] border-0 border-l-[3px] text-left transition-[filter] hover:brightness-[0.98] focus-visible:z-30",
+        "calendar-card z-10 overflow-hidden rounded-[6px] border-0 text-left transition-[filter] hover:brightness-[0.98] focus-visible:z-30",
         density === "compact" ? "px-2 py-1 text-[11px] leading-4" : "px-2.5 py-1.5 text-[12px] leading-[1.35]",
       )}
       data-density={density}
@@ -146,7 +146,6 @@ function AppointmentCard({ appointment, timezone, onOpen, compact = false, style
       style={{
         ...style,
         backgroundColor: color.event,
-        borderLeftColor: color.dot,
         color: color.text,
       }}
       type="button"
@@ -176,7 +175,7 @@ function RefillCard({ refill, timezone, onOpen, style }: {
   return (
     <button
       aria-label={`${refill.customerState} Open refill timeline`}
-      className="calendar-card z-20 overflow-hidden rounded-[6px] border border-dashed border-[#e78b78] border-l-[3px] border-l-landing-coral bg-[#fff3ef] px-2.5 py-1.5 text-left text-[12px] text-ink transition-colors hover:bg-[#ffebe5]"
+      className="calendar-card z-20 overflow-hidden rounded-[6px] border border-dashed border-[#e78b78] bg-[#fff3ef] px-2.5 py-1.5 text-left text-[12px] text-ink transition-colors hover:bg-[#ffebe5]"
       onClick={onOpen}
       style={style}
       type="button"
