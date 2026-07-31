@@ -10,11 +10,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import {
-  FaEnvelope,
   FaGithub,
-  FaGlobe,
-  FaLinkedin,
-  FaXTwitter,
 } from "react-icons/fa6";
 
 import { cn } from "../lib/cn.js";
@@ -29,10 +25,7 @@ const eyebrowClass =
   "m-0 inline-flex items-center text-[11px] font-bold uppercase leading-none tracking-[0.18em] text-landing-muted";
 
 const footerLinkClass =
-  "flex h-14 items-center gap-3 text-[rgba(16,23,34,0.68)] transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-landing-ink [&_svg]:h-[22px] [&_svg]:w-[22px]";
-
-const footerLabelClass =
-  "text-[12px] font-bold uppercase leading-none tracking-[0.11em]";
+  "inline-flex h-10 items-center gap-2 rounded-[7px] px-3 text-[11px] font-bold uppercase tracking-[0.09em] text-[rgba(16,23,34,0.7)] transition-[color,background-color] hover:bg-[rgba(255,255,255,0.24)] hover:text-landing-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-landing-ink [&_svg]:h-[16px] [&_svg]:w-[16px]";
 
 const serifClass = "font-landing-serif";
 
@@ -695,82 +688,27 @@ export function LandingPage() {
               </a>
             </div>
 
-            <footer className="mt-[58px] border-t border-[rgba(16,23,34,0.2)] px-1 pb-2 pt-7 text-landing-ink">
-              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-10 max-[720px]:grid-cols-1 max-[720px]:items-start max-[720px]:gap-5">
-                <p
-                  className={cn(
-                    serifClass,
-                    "m-0 text-[clamp(31px,3vw,44px)] italic leading-none tracking-[-0.035em]",
-                  )}
-                >
-                  Made with 🖤 by{" "}
-                  <a
-                    className="underline decoration-[rgba(16,23,34,0.3)] decoration-1 underline-offset-[7px] transition-colors hover:text-white"
-                    href="https://evanhe.co"
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    Evan He
-                  </a>
-                  .
-                </p>
-
-                <nav
-                  aria-label="Evan He online"
-                  className="flex self-center flex-wrap items-center justify-end gap-x-7 gap-y-2 max-[720px]:self-start max-[720px]:justify-start max-[720px]:gap-x-5"
-                >
-                  <a
-                    aria-label="Evan He's portfolio"
-                    className={footerLinkClass}
-                    href="https://evanhe.co"
-                    rel="noreferrer"
-                    target="_blank"
-                    title="Portfolio"
-                  >
-                    <FaGlobe aria-hidden="true" />
-                    <span className={footerLabelClass}>Portfolio</span>
+            <footer className="mt-10 border-t border-[rgba(16,23,34,0.2)] px-1 py-6 text-landing-ink">
+              <div className="flex items-center justify-between gap-8 max-[720px]:flex-col max-[720px]:items-start max-[720px]:gap-4">
+                <div className="flex items-center gap-4 max-[520px]:items-start">
+                  <Brand compact />
+                  <span aria-hidden="true" className="h-7 w-px bg-[rgba(16,23,34,0.2)]" />
+                  <p className="m-0 max-w-[310px] text-[13px] leading-5 text-[rgba(16,23,34,0.68)]">
+                    Voice agents for cancelled appointments.
+                  </p>
+                </div>
+                <nav aria-label="Standby links" className="flex items-center gap-1 max-[720px]:-ml-3">
+                  <a className={footerLinkClass} href="/app">
+                    Open product
                   </a>
                   <a
-                    aria-label="Evan He on GitHub"
                     className={footerLinkClass}
-                    href="https://github.com/EvanJYHe"
+                    href="https://github.com/EvanJYHe/standby"
                     rel="noreferrer"
                     target="_blank"
-                    title="GitHub"
                   >
                     <FaGithub aria-hidden="true" />
-                    <span className={footerLabelClass}>GitHub</span>
-                  </a>
-                  <a
-                    aria-label="Evan He on LinkedIn"
-                    className={footerLinkClass}
-                    href="https://www.linkedin.com/in/evan-he-4253712a9/"
-                    rel="noreferrer"
-                    target="_blank"
-                    title="LinkedIn"
-                  >
-                    <FaLinkedin aria-hidden="true" />
-                    <span className={footerLabelClass}>LinkedIn</span>
-                  </a>
-                  <a
-                    aria-label="Evan He on Twitter/X"
-                    className={footerLinkClass}
-                    href="https://x.com/EvanJYHe"
-                    rel="noreferrer"
-                    target="_blank"
-                    title="Twitter/X"
-                  >
-                    <FaXTwitter aria-hidden="true" />
-                    <span className={footerLabelClass}>Twitter / X</span>
-                  </a>
-                  <a
-                    aria-label="Email Evan He"
-                    className={footerLinkClass}
-                    href="mailto:e35h@uwaterloo.ca"
-                    title="Email"
-                  >
-                    <FaEnvelope aria-hidden="true" />
-                    <span className={footerLabelClass}>Email</span>
+                    GitHub
                   </a>
                 </nav>
               </div>
