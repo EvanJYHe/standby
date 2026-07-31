@@ -10,6 +10,7 @@ import type {
   CustomerSummary,
   OperationResult,
   OperatorWaitlistEntry,
+  OperatorSnapshot,
   StandbyApi,
   SchedulingSettings,
 } from "./types.js";
@@ -25,24 +26,55 @@ export class StandbyApiError extends Error {
   }
 }
 
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    ...init,
-    headers: {
-      ...(init?.body === undefined ? {} : { "Content-Type": "application/json" }),
-      ...init?.headers,
-    },
-  });
-  const text = await response.text();
-  const payload = text === "" ? {} : JSON.parse(text) as Record<string, unknown>;
-  if (!response.ok) {
-    throw new StandbyApiError(
-      typeof payload.message === "string" ? payload.message : `Standby request failed (${response.status}).`,
-      response.status,
-      typeof payload.code === "string" ? payload.code : undefined,
-    );
+const pendingReads = new Map<string, Promise<unknown>>();
+
+async function performRequest<T>(url: string, init?: RequestInit): Promise<T> {
+  const controller = new AbortController();
+  const timeout = globalThis.setTimeout(() => controller.abort(), 12_000);
+  try {
+    const response = await fetch(url, {
+      ...init,
+      headers: {
+        ...(init?.body === undefined ? {} : { "Content-Type": "application/json" }),
+        ...init?.headers,
+      },
+      signal: controller.signal,
+    });
+    const text = await response.text();
+    let payload: Record<string, unknown> = {};
+    if (text !== "") {
+      try {
+        payload = JSON.parse(text) as Record<string, unknown>;
+      } catch {
+        throw new StandbyApiError("Standby received an unreadable response.", response.status);
+      }
+    }
+    if (!response.ok) {
+      throw new StandbyApiError(
+        typeof payload.message === "string" ? payload.message : `Standby request failed (${response.status}).`,
+        response.status,
+        typeof payload.code === "string" ? payload.code : undefined,
+      );
+    }
+    return payload as T;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new StandbyApiError("Standby took too long to respond. Please try again.", 408, "TIMEOUT");
+    }
+    throw error;
+  } finally {
+    globalThis.clearTimeout(timeout);
   }
-  return payload as T;
+}
+
+function request<T>(url: string, init?: RequestInit): Promise<T> {
+  const method = init?.method ?? "GET";
+  if (method !== "GET" || init?.body !== undefined) return performRequest<T>(url, init);
+  const pending = pendingReads.get(url);
+  if (pending !== undefined) return pending as Promise<T>;
+  const next = performRequest<T>(url, init).finally(() => pendingReads.delete(url));
+  pendingReads.set(url, next);
+  return next;
 }
 
 export const defaultApi: StandbyApi = {
@@ -89,6 +121,7 @@ export const defaultApi: StandbyApi = {
     },
   ),
   getConversations: () => request<ConversationSummary[]>("/api/v1/conversations"),
+  getOperatorSnapshot: () => request<OperatorSnapshot>("/api/v1/operator-snapshot"),
   getConversation: (id) => request<ConversationDetail>(
     `/api/v1/conversations/${encodeURIComponent(id)}`,
   ),

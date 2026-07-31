@@ -41,11 +41,7 @@ textarea {
 
 .product-page {
   min-height: 100vh;
-  background:
-    linear-gradient(to right, rgba(16, 23, 34, 0.04) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(16, 23, 34, 0.04) 1px, transparent 1px),
-    #f2f0e9;
-  background-size: 72px 72px;
+  background: #fff;
 }
 
 .product-page input,
@@ -66,16 +62,35 @@ textarea {
 }
 
 .product-calendar-grid {
-  background:
-    linear-gradient(to right, rgba(16, 23, 34, 0.025) 1px, transparent 1px),
-    #fffdfa;
-  background-size: 72px 72px;
+  background: #fff;
 }
 
 .calendar-card {
   position: absolute;
   top: var(--card-top);
   height: var(--card-height);
+}
+
+.calendar-loading-lines {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 63px,
+    #e8eaed 63px,
+    #e8eaed 64px
+  );
+}
+
+@keyframes calendar-progress {
+  0% { transform: translateX(-70%) scaleX(0.35); }
+  55% { transform: translateX(35%) scaleX(0.55); }
+  100% { transform: translateX(110%) scaleX(0.25); }
+}
+
+.calendar-progress {
+  width: 55%;
+  transform-origin: left;
+  animation: calendar-progress 1.1s ease-in-out infinite;
 }
 
 @keyframes event-popover-in {
@@ -95,6 +110,7 @@ textarea {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .calendar-progress,
   .event-popover {
     animation: none;
   }
@@ -280,10 +296,6 @@ textarea {
 }
 
 @media (max-width: 720px) {
-  .product-page {
-    background-size: 44px 44px;
-  }
-
   .landing-page {
     background-size: 44px 44px;
   }

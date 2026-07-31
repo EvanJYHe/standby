@@ -240,6 +240,14 @@ export interface ConversationDetail {
   };
 }
 
+export interface OperatorSnapshot {
+  conversations: ConversationSummary[];
+  selectedConversation?: ConversationDetail;
+  waitlist: OperatorWaitlistEntry[];
+  activity: ActivityItem[];
+  generatedAt: string;
+}
+
 export type OperationResult =
   | { type: "committed"; operation: string; message: string; appointmentId?: string; refillJobId?: string }
   | { type: "conflict"; code: "STALE_SLOT" | "STALE_OFFER"; message: string }
@@ -270,6 +278,7 @@ export interface StandbyApi {
   patchCustomer(id: string, patch: Partial<CustomerDetail["preferences"]>): Promise<CustomerDetail>;
   addCustomerNote(id: string, text: string): Promise<CustomerNote>;
   getConversations(): Promise<ConversationSummary[]>;
+  getOperatorSnapshot?(): Promise<OperatorSnapshot>;
   getConversation(id: string): Promise<ConversationDetail>;
   getWaitlist(): Promise<OperatorWaitlistEntry[]>;
   patchWaitlist(

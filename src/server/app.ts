@@ -512,6 +512,21 @@ export async function buildServer(options: BuildServerOptions): Promise<FastifyI
     projectConversationList(await options.store.read())
   ));
 
+  app.get("/api/v1/operator-snapshot", async () => {
+    const state = await options.store.read();
+    const conversations = projectConversationList(state);
+    const selectedConversation = conversations[0] === undefined
+      ? undefined
+      : projectConversationDetail(state, conversations[0].id);
+    return {
+      conversations,
+      ...(selectedConversation === undefined ? {} : { selectedConversation }),
+      waitlist: projectWaitlist(state),
+      activity: projectActivity(state),
+      generatedAt: clock(),
+    };
+  });
+
   app.get<{ Params: { id: string } }>("/api/v1/conversations/:id", async (request, reply) => {
     const detail = projectConversationDetail(await options.store.read(), request.params.id);
     return detail ?? reply.status(404).send({ error: "not_found" });

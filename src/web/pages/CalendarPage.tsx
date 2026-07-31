@@ -3,7 +3,17 @@ import { DateTime } from "luxon";
 
 import { StandbyApiError } from "../api.js";
 import { MiniMonth } from "../components/MiniMonth.js";
-import { EditIcon, TrashIcon, XIcon } from "../components/icons.js";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  EditIcon,
+  GoogleCalendarIcon,
+  OutlookIcon,
+  PlusIcon,
+  SyncIcon,
+  TrashIcon,
+  XIcon,
+} from "../components/icons.js";
 import { Button, Drawer, IconButton, Modal, SegmentedControl, cn } from "../components/ui.js";
 import { movePeriod, periodLabel, periodRange, type CalendarView } from "../lib/dates.js";
 import type {
@@ -27,9 +37,23 @@ interface CalendarPageProps {
   onMutated: () => Promise<void>;
 }
 
-const pixelsPerHour = 96;
+const pixelsPerHour = 64;
 const timelineStartHour = 8;
-const timelineEndHour = 24;
+const timelineEndHour = 21;
+
+const barberPalette: Record<string, {
+  event: string;
+  dot: string;
+  text: string;
+}> = {
+  jeremy: { event: "#fce8e6", dot: "#d96857", text: "#6d2f28" },
+  maya: { event: "#e8f0fe", dot: "#4c74a8", text: "#294f7e" },
+  devon: { event: "#e6f4ea", dot: "#4f7b5c", text: "#315d3d" },
+};
+
+function barberColor(barberId: string) {
+  return barberPalette[barberId] ?? barberPalette.jeremy!;
+}
 
 function localDate(iso: string, timezone: string): string {
   return DateTime.fromISO(iso).setZone(timezone).toISODate()!;
@@ -81,12 +105,18 @@ function HourLines({ startHour, endHour }: { startHour: number; endHour: number 
   return (
     <>
       {Array.from({ length: endHour - startHour + 1 }, (_, index) => (
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 border-t border-line"
-          key={index}
-          style={{ top: index * pixelsPerHour }}
-        />
+        <span aria-hidden="true" key={index}>
+          <span
+            className="pointer-events-none absolute inset-x-0 border-t border-[#e8eaed]"
+            style={{ top: index * pixelsPerHour }}
+          />
+          {index === endHour - startHour ? null : (
+            <span
+              className="pointer-events-none absolute inset-x-0 border-t border-dashed border-[#f1f3f4]"
+              style={{ top: index * pixelsPerHour + pixelsPerHour / 2 }}
+            />
+          )}
+        </span>
       ))}
     </>
   );
@@ -102,35 +132,35 @@ function AppointmentCard({ appointment, timezone, onOpen, compact = false, style
   const density = compact || durationMinutes(appointment.startAt, appointment.endAt) < 45
     ? "compact"
     : "full";
-  const tone = appointment.barberId === "maya"
-    ? "border-[#ccd5df] border-l-[#53667f] bg-[#f5f8fb] hover:bg-white"
-    : appointment.barberId === "devon"
-      ? "border-[#ddd4cf] border-l-[#8d7165] bg-[#faf7f5] hover:bg-white"
-      : "border-[#e5cec7] border-l-landing-coral bg-[#fff7f4] hover:bg-white";
+  const color = barberColor(appointment.barberId);
   return (
     <button
       aria-label={`${appointment.customerName}, ${appointment.serviceName}, ${timeLabel(appointment.startAt, timezone)}`}
       className={cn(
-        "calendar-card z-10 overflow-hidden rounded-[8px] border border-l-[3px] text-left text-ink shadow-[0_3px_10px_rgba(16,23,34,0.055)] transition-[background-color,box-shadow,transform] hover:-translate-y-px hover:shadow-[0_6px_16px_rgba(16,23,34,0.09)] focus-visible:z-30",
-        tone,
-        density === "compact" ? "px-2 py-1 text-[11px] leading-4" : "px-2.5 py-1.5 text-xs",
+        "calendar-card z-10 overflow-hidden rounded-[6px] border-0 border-l-[3px] text-left transition-[filter] hover:brightness-[0.98] focus-visible:z-30",
+        density === "compact" ? "px-2 py-1 text-[11px] leading-4" : "px-2.5 py-1.5 text-[12px] leading-[1.35]",
       )}
       data-density={density}
       data-visual="solid"
       onClick={(event) => onOpen(event.currentTarget.getBoundingClientRect())}
-      style={style}
+      style={{
+        ...style,
+        backgroundColor: color.event,
+        borderLeftColor: color.dot,
+        color: color.text,
+      }}
       type="button"
     >
       {density === "compact" ? (
         <>
-          <strong className="block truncate font-semibold text-ink">{appointment.customerName} · {appointment.serviceName}</strong>
-          <span className="block truncate text-[10px] text-muted">{timeLabel(appointment.startAt, timezone)} · {appointment.barberName}</span>
+          <strong className="block truncate font-semibold">{appointment.customerName} · {appointment.serviceName}</strong>
+          <span className="block truncate text-[10px] opacity-75">{timeLabel(appointment.startAt, timezone)} · {appointment.barberName}</span>
         </>
       ) : (
         <>
-          <strong className="block truncate font-semibold text-ink">{appointment.customerName} · {appointment.serviceName}</strong>
-          <span className="mt-0.5 block truncate text-muted">{timeLabel(appointment.startAt, timezone)}–{timeLabel(appointment.endAt, timezone)}</span>
-          <span className="mt-0.5 block truncate text-[11px] text-muted">{appointment.barberName}</span>
+          <strong className="block truncate font-semibold">{appointment.customerName} · {appointment.serviceName}</strong>
+          <span className="mt-0.5 block truncate opacity-75">{timeLabel(appointment.startAt, timezone)}–{timeLabel(appointment.endAt, timezone)}</span>
+          <span className="mt-0.5 block truncate text-[10px] opacity-70">{appointment.barberName}</span>
         </>
       )}
     </button>
@@ -146,7 +176,7 @@ function RefillCard({ refill, timezone, onOpen, style }: {
   return (
     <button
       aria-label={`${refill.customerState} Open refill timeline`}
-      className="calendar-card z-20 overflow-hidden rounded-[8px] border border-[#e8b8ac] border-l-[3px] border-l-landing-coral bg-landing-coral-soft px-2.5 py-1.5 text-left text-xs text-ink shadow-[0_3px_10px_rgba(145,58,42,0.08)] transition-[background-color,box-shadow,transform] hover:-translate-y-px hover:bg-[#ffe9e3] hover:shadow-[0_6px_16px_rgba(145,58,42,0.12)]"
+      className="calendar-card z-20 overflow-hidden rounded-[6px] border border-dashed border-[#e78b78] border-l-[3px] border-l-landing-coral bg-[#fff3ef] px-2.5 py-1.5 text-left text-[12px] text-ink transition-colors hover:bg-[#ffebe5]"
       onClick={onOpen}
       style={style}
       type="button"
@@ -160,11 +190,11 @@ function RefillCard({ refill, timezone, onOpen, style }: {
 
 function TimeRuler({ startHour, endHour }: { startHour: number; endHour: number }) {
   return (
-    <div aria-hidden="true" className="relative border-r border-line bg-[#f7f5ef]">
+    <div aria-hidden="true" className="relative border-r border-[#e8eaed] bg-white">
       {Array.from({ length: endHour - startHour }, (_, index) => (
         <span
           className={cn(
-            "absolute right-3 font-mono text-[10px] text-muted",
+            "absolute right-3 text-[10px] font-medium text-[#70757a]",
             index === 0 ? "translate-y-1.5" : "-translate-y-1/2",
           )}
           key={index}
@@ -205,16 +235,48 @@ function DayCalendar({ calendar, date, barberFilter, onAppointment, onRefill }: 
   useEffect(() => {
     if (scrollRef.current !== null) scrollRef.current.scrollTop = initialScrollTop(visibleStarts, calendar.timezone);
   }, [barberFilter, calendar.timezone, date, visibleStarts.join("|")]);
+
   return (
-    <section aria-label="Day calendar" className="flex h-full min-h-0 flex-col bg-white" data-end-hour={endHour} data-start-hour={startHour}>
+    <section
+      aria-label="Day calendar"
+      className="flex h-full min-h-0 min-w-[680px] flex-col bg-white"
+      data-end-hour={endHour}
+      data-start-hour={startHour}
+    >
       <div
-        className="grid min-h-[52px] shrink-0 border-b border-line bg-[#f7f5ef]"
+        className="grid min-h-[66px] shrink-0 border-b border-[#e8eaed] bg-white"
         role="row"
-        style={{ gridTemplateColumns: "72px minmax(0, 1fr)" }}
+        style={{ gridTemplateColumns: "64px minmax(0, 1fr)" }}
       >
-        <div className="border-r border-line" />
-        <div aria-label={barberFilter === "all" ? "All barbers" : barbers[0]?.name} className="flex items-center px-4 text-sm font-semibold" role="columnheader">
-          {barberFilter === "all" ? "All barbers" : barbers[0]?.name}
+        <div className="border-r border-[#e8eaed]" />
+        <div className="grid" style={{ gridTemplateColumns: `repeat(${Math.max(1, barbers.length)}, minmax(0, 1fr))` }}>
+          {barbers.map((barber) => {
+            const count = calendar.appointments.filter((appointment) => (
+              appointment.status === "confirmed"
+              && appointment.barberId === barber.id
+              && localDate(appointment.startAt, calendar.timezone) === date
+            )).length;
+            return (
+              <div
+                aria-label={barber.name}
+                className="flex items-center justify-center gap-2 border-r border-[#e8eaed] px-3 last:border-r-0"
+                key={barber.id}
+                role="columnheader"
+              >
+                <span
+                  aria-hidden="true"
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[12px] font-semibold text-white"
+                  style={{ backgroundColor: barberColor(barber.id).dot }}
+                >
+                  {barber.name.slice(0, 1)}
+                </span>
+                <span className="min-w-0">
+                  <strong className="block truncate text-[13px] font-semibold text-ink">{barber.name}</strong>
+                  <span className="block text-[10px] text-muted">{count} {count === 1 ? "event" : "events"}</span>
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
       <div
@@ -225,52 +287,51 @@ function DayCalendar({ calendar, date, barberFilter, onAppointment, onRefill }: 
       >
         <div
           className="grid"
-          style={{ gridTemplateColumns: "72px minmax(0, 1fr)" }}
+          style={{ gridTemplateColumns: "64px minmax(0, 1fr)" }}
         >
           <TimeRuler endHour={endHour} startHour={startHour} />
-          <div className="product-calendar-grid relative" style={{ height: laneHeight }}>
-              <HourLines endHour={endHour} startHour={startHour} />
-              {calendar.appointments
-                .filter((appointment) => appointment.status === "confirmed")
-                .filter((appointment) => barbers.some((barber) => barber.id === appointment.barberId))
-                .filter((appointment) => localDate(appointment.startAt, calendar.timezone) === date)
-                .map((appointment) => {
-                  const index = Math.max(0, barbers.findIndex((barber) => barber.id === appointment.barberId));
-                  const width = barberFilter === "all" ? 96 / Math.max(1, barbers.length) : 96;
-                  return (
-                  <AppointmentCard
-                    appointment={appointment}
-                    key={appointment.id}
-                    onOpen={(rect) => onAppointment(appointment, rect)}
-                    style={{
-                      ...cardStyle(appointment.startAt, appointment.endAt, calendar.timezone, startHour * 60),
-                      left: `${2 + index * width}%`,
-                      width: `${width - 1}%`,
-                    }}
-                    timezone={calendar.timezone}
-                  />
-                  );
-                })}
-              {calendar.activeRefills
-                .filter((refill) => barbers.some((barber) => barber.id === refill.barberId))
-                .filter((refill) => localDate(refill.slotStartAt, calendar.timezone) === date)
-                .map((refill) => {
-                  const index = Math.max(0, barbers.findIndex((barber) => barber.id === refill.barberId));
-                  const width = barberFilter === "all" ? 96 / Math.max(1, barbers.length) : 96;
-                  return (
-                  <RefillCard
-                    key={refill.id}
-                    onOpen={() => onRefill(refill)}
-                    refill={refill}
-                    style={{
-                      ...cardStyle(refill.slotStartAt, refill.slotEndAt, calendar.timezone, startHour * 60),
-                      left: `${2 + index * width}%`,
-                      width: `${width - 1}%`,
-                    }}
-                    timezone={calendar.timezone}
-                  />
-                  );
-                })}
+          <div
+            className="grid"
+            style={{ gridTemplateColumns: `repeat(${Math.max(1, barbers.length)}, minmax(0, 1fr))` }}
+          >
+            {barbers.map((barber) => (
+              <div className="relative border-r border-[#e8eaed] last:border-r-0" key={barber.id} style={{ height: laneHeight }}>
+                <HourLines endHour={endHour} startHour={startHour} />
+                {calendar.appointments
+                  .filter((appointment) => appointment.status === "confirmed")
+                  .filter((appointment) => appointment.barberId === barber.id)
+                  .filter((appointment) => localDate(appointment.startAt, calendar.timezone) === date)
+                  .map((appointment) => (
+                    <AppointmentCard
+                      appointment={appointment}
+                      key={appointment.id}
+                      onOpen={(rect) => onAppointment(appointment, rect)}
+                      style={{
+                        ...cardStyle(appointment.startAt, appointment.endAt, calendar.timezone, startHour * 60),
+                        left: 5,
+                        right: 5,
+                      }}
+                      timezone={calendar.timezone}
+                    />
+                  ))}
+                {calendar.activeRefills
+                  .filter((refill) => refill.barberId === barber.id)
+                  .filter((refill) => localDate(refill.slotStartAt, calendar.timezone) === date)
+                  .map((refill) => (
+                    <RefillCard
+                      key={refill.id}
+                      onOpen={() => onRefill(refill)}
+                      refill={refill}
+                      style={{
+                        ...cardStyle(refill.slotStartAt, refill.slotEndAt, calendar.timezone, startHour * 60),
+                        left: 5,
+                        right: 5,
+                      }}
+                      timezone={calendar.timezone}
+                    />
+                  ))}
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -306,12 +367,15 @@ function WeekCalendar({ calendar, dates, barberFilter, onAppointment, onRefill }
     if (scrollRef.current !== null) scrollRef.current.scrollTop = initialScrollTop(visibleStarts, calendar.timezone);
   }, [barberFilter, calendar.timezone, dates.join("|"), visibleStarts.join("|")]);
   return (
-    <section aria-label="Week calendar" className="flex h-full min-h-0 flex-col bg-white" data-end-hour={endHour} data-start-hour={startHour}>
-      <div className="grid min-h-[52px] shrink-0 border-b border-line bg-[#f7f5ef]" style={{ gridTemplateColumns: `72px repeat(${dates.length}, minmax(0, 1fr))` }}>
-        <div className="border-r border-line" />
+    <section aria-label="Week calendar" className="flex h-full min-h-0 min-w-[980px] flex-col bg-white" data-end-hour={endHour} data-start-hour={startHour}>
+      <div className="grid min-h-[58px] shrink-0 border-b border-[#e8eaed] bg-white" style={{ gridTemplateColumns: `64px repeat(${dates.length}, minmax(0, 1fr))` }}>
+        <div className="border-r border-[#e8eaed]" />
         {dates.map((date) => (
-          <div className="flex items-center border-r border-line px-3 text-sm font-semibold last:border-r-0" key={date}>
-            {DateTime.fromISO(date).toFormat("ccc d")}
+          <div className="flex items-center justify-center border-r border-[#e8eaed] px-2 last:border-r-0" key={date}>
+            <span className="text-center">
+              <span className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-muted">{DateTime.fromISO(date).toFormat("ccc")}</span>
+              <span className="mt-0.5 block text-[18px] font-medium text-ink">{DateTime.fromISO(date).day}</span>
+            </span>
           </div>
         ))}
       </div>
@@ -321,10 +385,10 @@ function WeekCalendar({ calendar, dates, barberFilter, onAppointment, onRefill }
         onScroll={(event) => saveCalendarScroll(event.currentTarget.scrollTop)}
         ref={scrollRef}
       >
-        <div className="grid" style={{ gridTemplateColumns: `72px repeat(${dates.length}, minmax(0, 1fr))` }}>
+        <div className="grid" style={{ gridTemplateColumns: `64px repeat(${dates.length}, minmax(0, 1fr))` }}>
           <TimeRuler endHour={endHour} startHour={startHour} />
           {dates.map((date) => (
-            <div className="product-calendar-grid relative border-r border-line last:border-r-0" key={date} style={{ height: laneHeight }}>
+            <div className="relative border-r border-[#e8eaed] last:border-r-0" key={date} style={{ height: laneHeight }}>
               <HourLines endHour={endHour} startHour={startHour} />
               {calendar.appointments
                 .filter((appointment) => appointment.status === "confirmed")
@@ -381,10 +445,10 @@ function MonthCalendar({ calendar, anchorDate, dates, barberFilter, onSelectDate
 }) {
   const anchorMonth = DateTime.fromISO(anchorDate).month;
   return (
-    <section aria-label="Month calendar" className="overflow-hidden rounded-[12px] border border-line bg-white shadow-[0_10px_28px_rgba(16,23,34,0.06)]">
-      <div className="grid grid-cols-7 border-b border-line bg-[#f7f5ef]">
+    <section aria-label="Month calendar" className="overflow-hidden border border-[#e8eaed] bg-white">
+      <div className="grid grid-cols-7 border-b border-[#e8eaed] bg-white">
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-          <div className="border-r border-line px-3 py-2.5 text-xs font-medium text-muted last:border-r-0" key={day}>{day}</div>
+          <div className="border-r border-[#e8eaed] px-3 py-2.5 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-muted last:border-r-0" key={day}>{day}</div>
         ))}
       </div>
       <div className="grid grid-cols-7">
@@ -397,25 +461,38 @@ function MonthCalendar({ calendar, anchorDate, dates, barberFilter, onSelectDate
           const refills = calendar.activeRefills
             .filter((refill) => localDate(refill.slotStartAt, calendar.timezone) === date)
             .filter((refill) => barberFilter === "all" || refill.barberId === barberFilter);
-          const countLabel = `${appointments.length} ${appointments.length === 1 ? "appointment" : "appointments"}`;
           return (
             <button
               aria-label={`Open ${value.toFormat("cccc, LLLL d")}`}
               className={cn(
-                "min-h-28 border-b border-r border-line bg-white p-3 text-left transition-colors hover:bg-[#fff7f4]",
-                value.month !== anchorMonth && "bg-[#f7f5ef] text-[#a4a8af]",
+                "min-h-32 border-b border-r border-[#e8eaed] bg-white p-2 text-left transition-colors hover:bg-[#f8f9fa]",
+                value.month !== anchorMonth && "bg-[#f8f9fa] text-[#9aa0a6]",
               )}
               key={date}
               onClick={() => onSelectDate(date)}
               type="button"
             >
-              <span className="flex items-center justify-between text-xs font-medium">
-                {value.day}
+              <span className="flex items-center justify-between px-1 text-xs font-medium">
+                <span className={cn(
+                  "grid h-6 w-6 place-items-center rounded-full",
+                  date === calendar.demoDate && "bg-landing-coral text-white",
+                )}>{value.day}</span>
                 {refills.length > 0 ? <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-[#a74836]">Open</span> : null}
               </span>
-              <span className="mt-5 block text-xs text-muted">{countLabel}</span>
-              <span className="mt-2 block h-1 overflow-hidden rounded-full bg-[#eeece6]">
-                <span className="block h-full rounded-full bg-landing-coral" style={{ width: `${Math.min(100, appointments.length * 18)}%` }} />
+              <span className="mt-2 block space-y-1">
+                {appointments.slice(0, 3).map((appointment) => {
+                  const color = barberColor(appointment.barberId);
+                  return (
+                    <span
+                      className="block truncate rounded-[4px] px-1.5 py-1 text-[10px] font-medium"
+                      key={appointment.id}
+                      style={{ backgroundColor: color.event, color: color.text }}
+                    >
+                      {timeLabel(appointment.startAt, calendar.timezone)} {appointment.customerName}
+                    </span>
+                  );
+                })}
+                {appointments.length > 3 ? <span className="block px-1 text-[10px] text-muted">+{appointments.length - 3} more</span> : null}
               </span>
             </button>
           );
@@ -748,12 +825,84 @@ function AppointmentEditor({ api, calendar, anchorDate, appointment, onClose, on
   );
 }
 
+function CalendarLoadingGrid() {
+  return (
+    <div aria-label="Loading calendar" className="flex h-full min-h-[560px] flex-col bg-white">
+      <div className="grid h-[66px] shrink-0 grid-cols-[64px_1fr] border-b border-[#e8eaed]">
+        <div className="border-r border-[#e8eaed]" />
+        <div className="grid grid-cols-3">
+          {[0, 1, 2].map((index) => (
+            <div className="flex items-center justify-center gap-2 border-r border-[#e8eaed] last:border-r-0" key={index}>
+              <span className="h-8 w-8 animate-pulse rounded-full bg-[#eef0f2]" />
+              <span className="h-3 w-14 animate-pulse rounded bg-[#eef0f2]" />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="grid flex-1 grid-cols-[64px_1fr]">
+        <div className="border-r border-[#e8eaed] bg-white" />
+        <div className="calendar-loading-lines grid grid-cols-3">
+          {[0, 1, 2].map((index) => (
+            <div className="relative border-r border-[#e8eaed] last:border-r-0" key={index}>
+              <span className="absolute left-2 right-2 top-20 h-12 animate-pulse rounded-[6px] bg-[#f3f4f5]" />
+              <span className="absolute left-2 right-2 top-52 h-16 animate-pulse rounded-[6px] bg-[#f3f4f5]" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CalendarIntegrations({ onStatus }: { onStatus: (message: string) => void }) {
+  const [outlookConnected, setOutlookConnected] = useState(false);
+  return (
+    <section className="mt-6 border-t border-[#e8eaed] pt-5" aria-label="Calendar integrations">
+      <h3 className="px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">Integrations</h3>
+      <div className="mt-2 space-y-1">
+        <button
+          aria-label="Sync Google Calendar"
+          className="flex w-full items-center gap-3 rounded-[8px] px-2 py-2 text-left transition-colors hover:bg-[#f1f3f4]"
+          onClick={() => onStatus("Google Calendar is up to date")}
+          type="button"
+        >
+          <GoogleCalendarIcon className="h-5 w-5 shrink-0" />
+          <span className="min-w-0 flex-1">
+            <strong className="block truncate text-[12px] font-medium text-ink">Google Calendar</strong>
+            <span className="block truncate text-[10px] text-[#188038]">Connected · two-way sync</span>
+          </span>
+          <SyncIcon className="h-3.5 w-3.5 text-muted" />
+        </button>
+        <button
+          aria-label={outlookConnected ? "Disconnect Outlook Calendar" : "Connect Outlook Calendar"}
+          className="flex w-full items-center gap-3 rounded-[8px] px-2 py-2 text-left transition-colors hover:bg-[#f1f3f4]"
+          onClick={() => {
+            setOutlookConnected((current) => !current);
+            onStatus(outlookConnected ? "Outlook disconnected" : "Outlook calendar connected");
+          }}
+          type="button"
+        >
+          <OutlookIcon className="h-5 w-5 shrink-0" />
+          <span className="min-w-0 flex-1">
+            <strong className="block truncate text-[12px] font-medium text-ink">Outlook</strong>
+            <span className={cn("block truncate text-[10px]", outlookConnected ? "text-[#188038]" : "text-muted")}>
+              {outlookConnected ? "Connected · two-way sync" : "Not connected"}
+            </span>
+          </span>
+          <span className="text-[10px] font-semibold text-[#1a73e8]">{outlookConnected ? "On" : "Add"}</span>
+        </button>
+      </div>
+    </section>
+  );
+}
+
 export function CalendarPage({
   api,
   calendar,
   anchorDate,
   view,
   barberFilter,
+  loading,
   onAnchorDateChange,
   onViewChange,
   onBarberFilterChange,
@@ -763,6 +912,7 @@ export function CalendarPage({
   const [anchorRect, setAnchorRect] = useState<DOMRect>();
   const [selectedRefill, setSelectedRefill] = useState<ActiveRefill>();
   const [editor, setEditor] = useState<"new" | "edit">();
+  const [syncNotice, setSyncNotice] = useState("Google Calendar synced just now");
   const range = useMemo(() => periodRange(anchorDate, view), [anchorDate, view]);
 
   const openAppointment = (appointment: CalendarAppointment, rect: DOMRect) => {
@@ -776,17 +926,34 @@ export function CalendarPage({
   };
 
   return (
-    <section className="mx-auto flex h-[calc(100vh-116px)] min-h-[620px] max-w-[1760px] flex-col overflow-hidden rounded-[14px] border border-[rgba(16,23,34,0.1)] bg-panel shadow-[0_18px_50px_rgba(16,23,34,0.08)]">
-      <div className="shrink-0 border-b border-line bg-panel px-5 py-4 lg:px-6">
+    <section
+      aria-busy={loading}
+      className="relative mx-auto flex h-[calc(100vh-65px)] min-h-0 max-w-[1900px] flex-col overflow-hidden bg-white"
+    >
+      <h2 className="sr-only">Calendar</h2>
+      {loading && calendar !== undefined ? <div className="calendar-progress absolute inset-x-0 top-0 z-40 h-[2px] bg-landing-coral" /> : null}
+      <div className="shrink-0 border-b border-[#e8eaed] bg-white px-4 py-3 lg:px-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="mr-3 text-[22px] font-semibold tracking-[-0.04em]">Calendar</h2>
-            <IconButton aria-label="Previous period" onClick={() => onAnchorDateChange(movePeriod(anchorDate, view, -1))}>‹</IconButton>
-            <IconButton aria-label="Next period" onClick={() => onAnchorDateChange(movePeriod(anchorDate, view, 1))}>›</IconButton>
-            <strong className="min-w-40 font-landing-serif text-[17px] font-normal italic tracking-[-0.02em]">{periodLabel(anchorDate, view)}</strong>
-            <Button className="h-8" onClick={() => onAnchorDateChange(calendar?.demoDate ?? anchorDate)} variant="ghost">Today</Button>
+            <Button className="mr-1 h-9 bg-white px-4" onClick={() => onAnchorDateChange(calendar?.demoDate ?? anchorDate)} variant="secondary">Today</Button>
+            <IconButton aria-label="Previous period" className="rounded-full" onClick={() => onAnchorDateChange(movePeriod(anchorDate, view, -1))}>
+              <ChevronLeftIcon className="h-4 w-4" />
+            </IconButton>
+            <IconButton aria-label="Next period" className="rounded-full" onClick={() => onAnchorDateChange(movePeriod(anchorDate, view, 1))}>
+              <ChevronRightIcon className="h-4 w-4" />
+            </IconButton>
+            <h2 className="ml-2 min-w-44 text-[20px] font-medium tracking-[-0.025em] text-ink sm:text-[22px]">{periodLabel(anchorDate, view)}</h2>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              aria-label="Sync calendars"
+              className="hidden h-9 px-3 sm:inline-flex"
+              onClick={() => setSyncNotice("All calendars are up to date")}
+              variant="secondary"
+            >
+              <SyncIcon className="h-4 w-4" />
+              Sync
+            </Button>
             <SegmentedControl
               label="Calendar view"
               onChange={onViewChange}
@@ -797,44 +964,56 @@ export function CalendarPage({
               ]}
               value={view}
             />
-            <Button aria-label="New appointment" onClick={openEditor} variant="primary">
-              <span aria-hidden="true">+</span>
-              New appointment
+            <Button aria-label="New appointment" className="h-9" onClick={openEditor} variant="primary">
+              <PlusIcon className="h-4 w-4" />
+              Create
             </Button>
           </div>
         </div>
       </div>
-      <div className="grid min-h-0 flex-1 grid-cols-[236px_minmax(0,1fr)] bg-white max-[900px]:grid-cols-1">
-        <aside className="min-h-0 border-r border-line bg-[#f7f5ef] px-4 py-5 max-[900px]:hidden">
+      <div className="grid min-h-0 flex-1 grid-cols-[248px_minmax(0,1fr)] bg-white max-[900px]:grid-cols-1">
+        <aside className="min-h-0 overflow-y-auto border-r border-[#e8eaed] bg-white px-4 py-4 max-[900px]:hidden">
+          <Button aria-label="Create appointment" className="mb-5 h-11 w-full justify-start rounded-[12px] bg-white px-4 shadow-[0_1px_3px_rgba(60,64,67,0.24)]" onClick={openEditor} variant="secondary">
+            <PlusIcon className="h-5 w-5 text-landing-coral" />
+            Create appointment
+          </Button>
           <MiniMonth anchorDate={anchorDate} onSelect={selectMonthDate} />
-          <div className="mt-6 border-t border-line pt-5">
+          <div className="mt-6 border-t border-[#e8eaed] pt-5">
             <div className="mb-2 flex items-center">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">Barbers</span>
+              <span className="px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">Team calendars</span>
             </div>
             <div className="space-y-1">
               {[{ id: "all", name: "All barbers" }, ...(calendar?.barbers ?? [])].map((barber) => (
                 <button
                   aria-pressed={barberFilter === barber.id}
                   className={cn(
-                    "flex h-9 w-full items-center rounded-md px-2.5 text-left text-sm transition-colors",
+                    "flex h-9 w-full items-center rounded-[7px] px-2.5 text-left text-[13px] transition-colors",
                     barberFilter === barber.id
-                      ? "bg-landing-coral-soft font-semibold text-ink"
-                      : "text-muted hover:bg-white hover:text-ink",
+                      ? "bg-[#f1f3f4] font-semibold text-ink"
+                      : "text-muted hover:bg-[#f8f9fa] hover:text-ink",
                   )}
                   key={barber.id}
                   onClick={() => onBarberFilterChange(barber.id)}
                   type="button"
                 >
-                  <span className={cn("mr-2 h-2 w-2 rounded-full border", barberFilter === barber.id ? "border-standby bg-standby" : "border-[#b9b8b1]")} />
+                  <span
+                    className={cn("mr-2.5 h-2.5 w-2.5 rounded-[3px] border", barber.id === "all" && "border-[#5f6368]")}
+                    style={barber.id === "all" ? undefined : {
+                      backgroundColor: barberColor(barber.id).dot,
+                      borderColor: barberColor(barber.id).dot,
+                    }}
+                  />
                   {barber.name}
                 </button>
               ))}
             </div>
           </div>
+          <CalendarIntegrations onStatus={setSyncNotice} />
+          <p aria-live="polite" className="mt-4 px-1 text-[10px] leading-4 text-muted">{syncNotice}</p>
         </aside>
-        <div className={cn("min-h-0 min-w-0", view === "month" ? "overflow-y-auto bg-[#f7f5ef] p-4" : "") }>
+        <div className={cn("min-h-0 min-w-0 overflow-x-auto", view === "month" ? "overflow-y-auto bg-white p-3" : "") }>
           {calendar === undefined ? (
-            <div className="min-h-96 animate-pulse border border-line bg-panel" />
+            <CalendarLoadingGrid />
           ) : view === "day" ? (
           <DayCalendar
             barberFilter={barberFilter}

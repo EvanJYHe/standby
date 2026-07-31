@@ -24,7 +24,10 @@ interface DashboardAppProps {
   eventSourceFactory?: (url: string) => EventSourceLike | undefined;
 }
 
-const defaultEventSourceFactory = (url: string): EventSourceLike => new EventSource(url);
+const defaultEventSourceFactory = (url: string): EventSourceLike | undefined => {
+  const local = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+  return local ? new EventSource(url) : undefined;
+};
 
 const destinations = [
   { id: "calendar" as const, label: "Calendar", icon: CalendarIcon },
@@ -100,17 +103,28 @@ export function DashboardApp({
     });
     return () => source.close();
   }, [eventSourceFactory]);
+  useEffect(() => {
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void refreshCalendarRef.current();
+    };
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, []);
 
   return (
     <div className="product-page min-h-screen font-landing-sans text-ink">
-      <header className="sticky top-0 z-30 px-3 pt-3 sm:px-5 sm:pt-4">
-        <div className="mx-auto grid min-h-[68px] max-w-[1760px] grid-cols-[1fr_auto_1fr] items-center rounded-[14px] border border-[rgba(16,23,34,0.1)] bg-panel px-3 shadow-[0_12px_32px_rgba(16,23,34,0.08)] sm:px-4 max-[720px]:grid-cols-[auto_1fr]">
+      <header className="sticky top-0 z-30 border-b border-[#e8eaed] bg-white">
+        <div className="mx-auto grid h-16 max-w-[1900px] grid-cols-[1fr_auto_1fr] items-center px-3 sm:px-5 max-[720px]:grid-cols-[auto_1fr]">
           <a className="justify-self-start" href="/">
             <h1
               aria-label="Standby"
-              className="flex items-center gap-2.5 text-[18px] font-semibold tracking-[-0.035em]"
+              className="flex items-center gap-2 text-[18px] font-semibold tracking-[-0.035em]"
             >
-              <span className="grid h-10 w-10 place-items-center overflow-hidden rounded-[9px]">
+              <span className="grid h-9 w-9 place-items-center overflow-hidden rounded-[8px]">
                 <img
                   alt=""
                   aria-hidden="true"
@@ -127,7 +141,7 @@ export function DashboardApp({
           </a>
           <nav
             aria-label="Primary"
-            className="flex items-center gap-1 rounded-[11px] border border-[rgba(16,23,34,0.08)] bg-[#f3f1eb] p-1 max-[720px]:justify-self-end"
+            className="flex h-full items-center gap-1 max-[720px]:justify-self-end"
           >
             {destinations.map((destination) => {
               const Icon = destination.icon;
@@ -135,10 +149,10 @@ export function DashboardApp({
                 <button
                   aria-current={page === destination.id ? "page" : undefined}
                   className={cn(
-                    "flex h-10 items-center gap-2 rounded-[8px] px-3.5 text-[13px] font-semibold transition-[color,background-color,box-shadow] max-[820px]:px-2.5",
+                    "relative flex h-10 items-center gap-2 rounded-[8px] px-3.5 text-[13px] font-medium transition-colors max-[820px]:px-2.5",
                     page === destination.id
-                      ? "bg-landing-ink text-white shadow-[0_5px_12px_rgba(16,23,34,0.16)]"
-                      : "text-muted hover:bg-white hover:text-ink",
+                      ? "bg-[#fff1ed] font-semibold text-[#a64533]"
+                      : "text-muted hover:bg-[#f1f3f4] hover:text-ink",
                   )}
                   key={destination.id}
                   onClick={() => navigateTo(destination.id)}
@@ -151,7 +165,7 @@ export function DashboardApp({
             })}
           </nav>
           <a
-            className="justify-self-end rounded-[8px] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted transition-colors hover:bg-white hover:text-ink max-[720px]:hidden"
+            className="justify-self-end rounded-[8px] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted transition-colors hover:bg-[#f1f3f4] hover:text-ink max-[720px]:hidden"
             href="/"
           >
             View site
@@ -159,9 +173,9 @@ export function DashboardApp({
         </div>
       </header>
       {error === undefined ? null : (
-        <div className="mx-auto mt-3 max-w-[900px] rounded-[10px] border border-[#ead9b9] bg-amber-soft px-6 py-2.5 text-center text-sm text-[#7c5b22]">{error}</div>
+        <div className="fixed left-1/2 top-[74px] z-40 max-w-[90vw] -translate-x-1/2 rounded-[8px] border border-[#ead9b9] bg-amber-soft px-5 py-2 text-center text-sm text-[#7c5b22] shadow-sm">{error}</div>
       )}
-      <main className="px-3 pb-3 pt-4 sm:px-5 sm:pb-5">
+      <main>
         <div hidden={page !== "calendar"}>
           <CalendarPage
             anchorDate={anchorDate}
@@ -177,17 +191,17 @@ export function DashboardApp({
           />
         </div>
         {visitedPages.has("agent") ? (
-          <div hidden={page !== "agent"}>
+          <div className="px-3 py-4 sm:px-5" hidden={page !== "agent"}>
             <AgentPage api={api} refreshKey={domainVersion} />
           </div>
         ) : null}
         {visitedPages.has("customers") ? (
-          <div hidden={page !== "customers"}>
+          <div className="px-3 py-4 sm:px-5" hidden={page !== "customers"}>
             <CustomersPage api={api} refreshKey={domainVersion} />
           </div>
         ) : null}
         {visitedPages.has("settings") ? (
-          <div hidden={page !== "settings"}>
+          <div className="px-3 py-4 sm:px-5" hidden={page !== "settings"}>
             <SettingsPage
               api={api}
               onReset={async () => {

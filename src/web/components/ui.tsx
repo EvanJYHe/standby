@@ -6,9 +6,9 @@ import { XIcon } from "./icons.js";
 export { cn } from "../lib/cn.js";
 
 const buttonVariants = {
-  primary: "border-standby bg-standby text-ink shadow-[0_6px_14px_rgba(145,58,42,0.14)] hover:border-[#ff8168] hover:bg-[#ff8168]",
-  secondary: "border-line bg-panel text-ink hover:border-[#c8c7c0] hover:bg-white",
-  ghost: "border-transparent bg-transparent text-muted hover:bg-[#eeece6] hover:text-ink",
+  primary: "border-standby bg-standby text-white hover:border-standby-dark hover:bg-standby-dark",
+  secondary: "border-[#dadce0] bg-white text-ink hover:bg-[#f8f9fa]",
+  ghost: "border-transparent bg-transparent text-muted hover:bg-[#f1f3f4] hover:text-ink",
   danger: "border-[#e8c5bd] bg-white text-[#a74836] hover:bg-[#fff5f2]",
 } as const;
 
@@ -20,7 +20,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex h-10 items-center justify-center gap-2 rounded-standby border px-4 text-sm font-semibold transition-[color,background-color,border-color,transform,box-shadow] hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0",
+        "inline-flex h-10 items-center justify-center gap-2 rounded-standby border px-4 text-sm font-semibold transition-[color,background-color,border-color,box-shadow] disabled:cursor-not-allowed disabled:opacity-50",
         buttonVariants[variant],
         className,
       )}
@@ -34,7 +34,7 @@ export function IconButton({ className, ...props }: ButtonHTMLAttributes<HTMLBut
   return (
     <button
       className={cn(
-        "inline-flex h-9 w-9 items-center justify-center rounded-standby border border-transparent text-muted transition-colors hover:bg-[#eeece6] hover:text-ink",
+        "inline-flex h-9 w-9 items-center justify-center rounded-standby border border-transparent text-muted transition-colors hover:bg-[#f1f3f4] hover:text-ink",
         className,
       )}
       type="button"
@@ -71,15 +71,15 @@ export function SegmentedControl<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <div aria-label={label} className="inline-flex rounded-standby border border-line bg-[#f1efe9] p-1" role="group">
+    <div aria-label={label} className="inline-flex rounded-[9px] border border-[#dadce0] bg-white p-0.5" role="group">
       {options.map((option) => (
         <button
           aria-pressed={value === option.value}
           className={cn(
-            "h-8 rounded-[7px] px-3.5 text-sm font-medium transition-[color,background-color,box-shadow]",
+            "h-8 rounded-[7px] px-3.5 text-sm font-medium transition-colors",
             value === option.value
-              ? "bg-ink text-white shadow-[0_4px_10px_rgba(16,23,34,0.14)]"
-              : "text-muted hover:bg-white hover:text-ink",
+              ? "bg-[#e9eef6] text-[#24466f]"
+              : "text-muted hover:bg-[#f1f3f4] hover:text-ink",
           )}
           key={option.value}
           onClick={() => onChange(option.value)}

@@ -21,8 +21,8 @@ export function MiniMonth({ anchorDate, onSelect }: {
       <div className="mb-3 flex items-center justify-between">
         <strong className="text-sm font-semibold">{month.toFormat("LLLL yyyy")}</strong>
         <div className="flex gap-1">
-          <button aria-label="Previous month" className="grid h-7 w-7 place-items-center rounded-full text-lg text-muted hover:bg-white hover:text-ink" onClick={() => setMonth((value) => value.minus({ months: 1 }))} type="button">‹</button>
-          <button aria-label="Next month" className="grid h-7 w-7 place-items-center rounded-full text-lg text-muted hover:bg-white hover:text-ink" onClick={() => setMonth((value) => value.plus({ months: 1 }))} type="button">›</button>
+          <button aria-label="Previous month" className="grid h-7 w-7 place-items-center rounded-full text-lg text-muted hover:bg-[#f1f3f4] hover:text-ink" onClick={() => setMonth((value) => value.minus({ months: 1 }))} type="button">‹</button>
+          <button aria-label="Next month" className="grid h-7 w-7 place-items-center rounded-full text-lg text-muted hover:bg-[#f1f3f4] hover:text-ink" onClick={() => setMonth((value) => value.plus({ months: 1 }))} type="button">›</button>
         </div>
       </div>
       <div className="grid grid-cols-7 text-center text-[10px] font-medium text-muted">
@@ -37,9 +37,9 @@ export function MiniMonth({ anchorDate, onSelect }: {
               aria-label={`Select ${date.toFormat("cccc, LLLL d")}`}
               aria-pressed={selected}
               className={cn(
-                "mx-auto grid h-7 w-7 place-items-center rounded-full text-[11px] transition-colors hover:bg-white",
+                "mx-auto grid h-7 w-7 place-items-center rounded-full text-[11px] transition-colors hover:bg-[#f1f3f4]",
                 date.month !== month.month && "text-[#b4b2ab]",
-                selected && "bg-standby font-semibold text-ink shadow-[0_3px_8px_rgba(145,58,42,0.16)] hover:bg-[#ff8168]",
+                selected && "bg-standby font-semibold text-white hover:bg-standby-dark",
               )}
               key={iso}
               onClick={() => onSelect(iso)}

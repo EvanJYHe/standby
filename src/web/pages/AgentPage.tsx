@@ -9,6 +9,7 @@ import type {
   ConversationEvent,
   ConversationSummary,
   OperatorWaitlistEntry,
+  OperatorSnapshot,
   StandbyApi,
 } from "../types.js";
 
@@ -438,6 +439,41 @@ function ActivityPanel({ activity }: { activity: ActivityItem[] }) {
   );
 }
 
+function AgentLoadingShell() {
+  return (
+    <div aria-label="Loading agent workspace" className="mx-auto grid min-h-[620px] w-full max-w-[1500px] overflow-hidden rounded-[14px] border border-line bg-white lg:grid-cols-[280px_minmax(0,1fr)_300px]" role="status">
+      <div className="border-r border-line p-4">
+        <div className="h-10 animate-pulse rounded-[8px] bg-[#f1f3f4]" />
+        <div className="mt-5 space-y-4">
+          {[0, 1, 2, 3].map((item) => (
+            <div className="flex gap-3" key={item}>
+              <span className="h-8 w-8 shrink-0 animate-pulse rounded-[8px] bg-[#f1f3f4]" />
+              <span className="flex-1 space-y-2">
+                <span className="block h-3 w-24 animate-pulse rounded bg-[#f1f3f4]" />
+                <span className="block h-2.5 w-full animate-pulse rounded bg-[#f5f6f7]" />
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="border-r border-line p-6">
+        <div className="mx-auto mt-16 max-w-lg space-y-5">
+          <div className="h-16 w-3/4 animate-pulse rounded-xl bg-[#f1f3f4]" />
+          <div className="ml-auto h-20 w-2/3 animate-pulse rounded-xl bg-[#f1f3f4]" />
+          <div className="h-12 w-4/5 animate-pulse rounded-xl bg-[#f5f6f7]" />
+        </div>
+      </div>
+      <div className="hidden p-5 lg:block">
+        <div className="h-3 w-20 animate-pulse rounded bg-[#f1f3f4]" />
+        <div className="mt-6 space-y-3">
+          {[0, 1, 2].map((item) => <div className="h-14 animate-pulse rounded-[8px] bg-[#f5f6f7]" key={item} />)}
+        </div>
+      </div>
+      <span className="sr-only">Loading agent activity</span>
+    </div>
+  );
+}
+
 export function AgentPage({ api, refreshKey }: AgentPageProps) {
   const [tab, setTab] = useState<AgentTab>("inbox");
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -452,7 +488,7 @@ export function AgentPage({ api, refreshKey }: AgentPageProps) {
   const [error, setError] = useState<string>();
 
   const selectConversation = (id: string | undefined) => {
-    setDetail(undefined);
+    if (id === selectedId) return;
     setSelectedId(id);
   };
 
@@ -470,22 +506,42 @@ export function AgentPage({ api, refreshKey }: AgentPageProps) {
   useEffect(() => {
     let active = true;
     setLoading(true);
-    void Promise.all([
-      api.getConversations(),
-      api.getWaitlist(),
-      api.getActivity(),
-    ]).then(([nextConversations, nextWaitlist, nextActivity]) => {
+    const loadSnapshot = async (): Promise<OperatorSnapshot> => {
+      if (api.getOperatorSnapshot !== undefined) return api.getOperatorSnapshot();
+      const [nextConversations, nextWaitlist, nextActivity] = await Promise.all([
+        api.getConversations(),
+        api.getWaitlist(),
+        api.getActivity(),
+      ]);
+      const selectedConversation = nextConversations[0] === undefined
+        ? undefined
+        : await api.getConversation(nextConversations[0].id);
+      return {
+        conversations: nextConversations,
+        ...(selectedConversation === undefined ? {} : { selectedConversation }),
+        waitlist: nextWaitlist,
+        activity: nextActivity,
+        generatedAt: new Date().toISOString(),
+      };
+    };
+    void loadSnapshot().then((snapshot) => {
       if (!active) return;
-      setConversations(nextConversations);
-      setWaitlist(nextWaitlist);
-      setActivity(nextActivity);
+      setConversations(snapshot.conversations);
+      setWaitlist(snapshot.waitlist);
+      setActivity(snapshot.activity);
       setError(undefined);
       setSelectedId((current) => (
-        current !== undefined && nextConversations.some((conversation) => conversation.id === current)
+        current !== undefined && snapshot.conversations.some((conversation) => conversation.id === current)
           ? current
-          : nextConversations[0]?.id
+          : snapshot.selectedConversation?.conversation.id ?? snapshot.conversations[0]?.id
       ));
-      if (nextConversations.length === 0) setDetail(undefined);
+      setDetail((current) => {
+        if (
+          current !== undefined
+          && snapshot.conversations.some((conversation) => conversation.id === current.conversation.id)
+        ) return current;
+        return snapshot.selectedConversation;
+      });
     }).catch(() => {
       if (active) setError("Conversation activity could not be refreshed.");
     }).finally(() => {
@@ -495,7 +551,7 @@ export function AgentPage({ api, refreshKey }: AgentPageProps) {
   }, [api, refreshKey]);
 
   useEffect(() => {
-    if (selectedId === undefined) return;
+    if (selectedId === undefined || detail?.conversation.id === selectedId) return;
     let active = true;
     setLoadingDetail(true);
     void api.getConversation(selectedId).then((nextDetail) => {
@@ -506,7 +562,7 @@ export function AgentPage({ api, refreshKey }: AgentPageProps) {
       if (active) setLoadingDetail(false);
     });
     return () => { active = false; };
-  }, [api, selectedId, refreshKey]);
+  }, [api, selectedId, refreshKey, detail?.conversation.id]);
 
   return (
     <section className="mx-auto max-w-[1760px]">
@@ -527,13 +583,14 @@ export function AgentPage({ api, refreshKey }: AgentPageProps) {
         />
       </div>
       <div>
-        {loading ? <span className="sr-only" role="status">Loading agent activity</span> : null}
         {error === undefined ? null : (
           <p className="mx-auto mb-4 max-w-[1500px] rounded-standby border border-[#ead9b9] bg-amber-soft px-4 py-3 text-sm text-[#7c5b22]" role="alert">
             {error}
           </p>
         )}
-        {tab === "inbox" ? (
+        {loading && conversations.length === 0 && tab === "inbox" ? (
+          <AgentLoadingShell />
+        ) : tab === "inbox" ? (
           <Inbox
             channelFilter={channelFilter}
             conversations={conversations}

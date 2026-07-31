@@ -254,51 +254,69 @@ export class MongoStandbyStore implements StandbyStore {
 
   private async readState(session?: ClientSession): Promise<StandbyState> {
     const findOptions = session === undefined ? {} : { session };
-    // The MongoDB driver forbids parallel operations on one transaction session.
-    const customers = await this.collection(collectionNames.customers).find({}, findOptions).toArray();
-    const barbers = await this.collection(collectionNames.barbers).find({}, findOptions).toArray();
-    const services = await this.collection(collectionNames.services).find({}, findOptions).toArray();
-    const appointments = await this.collection(collectionNames.appointments).find({}, findOptions).toArray();
-    const waitlist = await this.collection(collectionNames.waitlist).find({}, findOptions).toArray();
-    const refillJobs = await this.collection(collectionNames.refillJobs).find({}, findOptions).toArray();
-    const offers = await this.collection(collectionNames.offers).find({}, findOptions).toArray();
-    const processedEvents = await this.collection(collectionNames.processedEvents).find({}, findOptions).toArray();
-    const backboardThreads = await this.collection(collectionNames.backboardThreads).find({}, findOptions).toArray();
-    const conversations = await this.collection(collectionNames.conversations).find({}, findOptions).toArray();
-    const conversationEvents = await this.collection(collectionNames.conversationEvents)
-      .find({}, findOptions)
-      .sort({ occurredAt: 1 })
-      .toArray();
-    const customerNotes = await this.collection(collectionNames.customerNotes)
-      .find({}, findOptions)
-      .sort({ createdAt: 1 })
-      .toArray();
-    const events = await this.collection(collectionNames.events)
-      .find({}, findOptions)
-      .sort({ occurredAt: 1 })
-      .toArray();
-    const settingsDocument = await this.collection(collectionNames.settings)
-      .findOne({ _id: "shop" }, findOptions);
-    if (settingsDocument === null) {
-      throw new Error("Standby shop settings have not been initialized.");
-    }
-    const { _id: _settingsId, ...settings } = settingsDocument;
-    return {
-      customers: customers.map(fromDocument<Customer>),
-      barbers: barbers.map(fromDocument<Barber>),
-      services: services.map(fromDocument<Service>),
-      appointments: appointments.map(fromDocument<Appointment>),
-      waitlist: waitlist.map(fromDocument<WaitlistEntry>),
-      refillJobs: refillJobs.map(fromDocument<RefillJob>),
-      offers: offers.map(fromDocument<OutreachOffer>),
-      processedEvents: processedEvents.map(fromDocument<ProcessedProviderEvent>),
-      backboardThreads: backboardThreads.map(fromDocument<BackboardThreadMapping>),
-      conversations: conversations.map(fromDocument<Conversation>),
-      conversationEvents: conversationEvents.map(fromDocument<ConversationEvent>),
-      customerNotes: customerNotes.map(fromDocument<CustomerNote>),
-      events: events.map(fromDocument<CalendarEvent>),
-      settings: settings as unknown as SchedulingSettings,
+    const assemble = (
+      customers: StringIdDocument[],
+      barbers: StringIdDocument[],
+      services: StringIdDocument[],
+      appointments: StringIdDocument[],
+      waitlist: StringIdDocument[],
+      refillJobs: StringIdDocument[],
+      offers: StringIdDocument[],
+      processedEvents: StringIdDocument[],
+      backboardThreads: StringIdDocument[],
+      conversations: StringIdDocument[],
+      conversationEvents: StringIdDocument[],
+      customerNotes: StringIdDocument[],
+      events: StringIdDocument[],
+      settingsDocument: StringIdDocument | null,
+    ): StandbyState => {
+      if (settingsDocument === null) {
+        throw new Error("Standby shop settings have not been initialized.");
+      }
+      const { _id: _settingsId, ...settings } = settingsDocument;
+      return {
+        customers: customers.map(fromDocument<Customer>),
+        barbers: barbers.map(fromDocument<Barber>),
+        services: services.map(fromDocument<Service>),
+        appointments: appointments.map(fromDocument<Appointment>),
+        waitlist: waitlist.map(fromDocument<WaitlistEntry>),
+        refillJobs: refillJobs.map(fromDocument<RefillJob>),
+        offers: offers.map(fromDocument<OutreachOffer>),
+        processedEvents: processedEvents.map(fromDocument<ProcessedProviderEvent>),
+        backboardThreads: backboardThreads.map(fromDocument<BackboardThreadMapping>),
+        conversations: conversations.map(fromDocument<Conversation>),
+        conversationEvents: conversationEvents.map(fromDocument<ConversationEvent>),
+        customerNotes: customerNotes.map(fromDocument<CustomerNote>),
+        events: events.map(fromDocument<CalendarEvent>),
+        settings: settings as unknown as SchedulingSettings,
+      };
     };
+
+    const reads = [
+      () => this.collection(collectionNames.customers).find({}, findOptions).toArray(),
+      () => this.collection(collectionNames.barbers).find({}, findOptions).toArray(),
+      () => this.collection(collectionNames.services).find({}, findOptions).toArray(),
+      () => this.collection(collectionNames.appointments).find({}, findOptions).toArray(),
+      () => this.collection(collectionNames.waitlist).find({}, findOptions).toArray(),
+      () => this.collection(collectionNames.refillJobs).find({}, findOptions).toArray(),
+      () => this.collection(collectionNames.offers).find({}, findOptions).toArray(),
+      () => this.collection(collectionNames.processedEvents).find({}, findOptions).toArray(),
+      () => this.collection(collectionNames.backboardThreads).find({}, findOptions).toArray(),
+      () => this.collection(collectionNames.conversations).find({}, findOptions).toArray(),
+      () => this.collection(collectionNames.conversationEvents).find({}, findOptions).sort({ occurredAt: 1 }).toArray(),
+      () => this.collection(collectionNames.customerNotes).find({}, findOptions).sort({ createdAt: 1 }).toArray(),
+      () => this.collection(collectionNames.events).find({}, findOptions).sort({ occurredAt: 1 }).toArray(),
+      () => this.collection(collectionNames.settings).findOne({ _id: "shop" }, findOptions),
+    ] as const;
+
+    if (session === undefined) {
+      return assemble(...await Promise.all(reads.map((read) => read())) as Parameters<typeof assemble>);
+    }
+
+    // The MongoDB driver forbids parallel operations on one transaction session.
+    const results: unknown[] = [];
+    for (const read of reads) results.push(await read());
+    return assemble(...results as Parameters<typeof assemble>);
   }
 
   private async writeState(state: StandbyState, session: ClientSession): Promise<void> {

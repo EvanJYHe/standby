@@ -239,8 +239,9 @@ describe("CalendarPage", () => {
     render(<Harness />);
 
     expect(screen.getByLabelText("July 2026 mini calendar")).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "All barbers" })).toBeInTheDocument();
-    expect(screen.queryByRole("columnheader", { name: "Jeremy" })).not.toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Jeremy" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Maya" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Devon" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Sarah, Signature haircut/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Nadia, Skin fade/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Josh, Signature haircut/ })).not.toBeInTheDocument();
@@ -251,15 +252,15 @@ describe("CalendarPage", () => {
     expect(screen.queryByText("Sarah")).not.toBeInTheDocument();
   });
 
-  it("uses a viewport-sized 8 AM to midnight grid and compact copy for short appointments", () => {
+  it("uses a compact business-day grid and concise copy for short appointments", () => {
     render(<Harness />);
 
     const calendarRegion = screen.getByLabelText("Day calendar");
     expect(calendarRegion).toHaveAttribute("data-start-hour", "8");
-    expect(calendarRegion).toHaveAttribute("data-end-hour", "24");
+    expect(calendarRegion).toHaveAttribute("data-end-hour", "21");
     expect(calendarRegion).not.toHaveClass("overflow-x-auto");
     expect(within(calendarRegion).getByText("8 AM")).not.toHaveClass("-translate-y-1/2");
-    expect(within(calendarRegion).getByText("11 PM")).toBeInTheDocument();
+    expect(within(calendarRegion).getByText("8 PM")).toBeInTheDocument();
     expect(within(calendarRegion).getByTestId("calendar-scroll-region")).toHaveClass("overflow-y-auto");
 
     const shortAppointment = screen.getByRole("button", { name: /Eli, Beard sculpt/ });
@@ -279,14 +280,26 @@ describe("CalendarPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Week" }));
     expect(screen.getByLabelText("Week calendar")).toBeInTheDocument();
-    expect(screen.getByText("Tue 21")).toBeInTheDocument();
+    expect(within(screen.getByLabelText("Week calendar")).getByText("Tue")).toBeInTheDocument();
+    expect(within(screen.getByLabelText("Week calendar")).getByText("21")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Month" }));
     expect(screen.getByLabelText("Month calendar")).toBeInTheDocument();
     expect(within(screen.getByLabelText("Month calendar")).getByText("Sun")).toBeInTheDocument();
-    expect(screen.getByText("3 appointments")).toBeInTheDocument();
+    expect(within(screen.getByRole("button", { name: "Open Monday, July 20" })).getByText("1:00 PM Nadia")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Open Tuesday, July 21" }));
     expect(screen.getByLabelText("Day calendar")).toBeInTheDocument();
     expect(screen.getByText("Tuesday, July 21")).toBeInTheDocument();
+  });
+
+  it("offers calendar sync controls without leaving the workspace", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    expect(screen.getByText("Connected · two-way sync")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Sync Google Calendar" }));
+    expect(screen.getByText("Google Calendar is up to date")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Connect Outlook Calendar" }));
+    expect(screen.getByRole("button", { name: "Disconnect Outlook Calendar" })).toBeInTheDocument();
   });
 
   it("opens focused appointment and refill detail drawers", async () => {

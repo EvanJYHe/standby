@@ -337,8 +337,9 @@ describe("Standby Fastify API", () => {
       url: `/api/v1/conversations/${conversationId}`,
     });
     const activity = await app.inject({ method: "GET", url: "/api/v1/activity" });
+    const operatorSnapshot = await app.inject({ method: "GET", url: "/api/v1/operator-snapshot" });
 
-    for (const response of [customers, detail, waitlist, conversations, conversation, activity]) {
+    for (const response of [customers, detail, waitlist, conversations, conversation, activity, operatorSnapshot]) {
       expect(response.statusCode).toBe(200);
       expect(response.body).not.toContain("+14165550101");
       expect(response.body).not.toContain("telegramChatId");
@@ -347,6 +348,15 @@ describe("Standby Fastify API", () => {
     expect(customers.json()).toEqual([expect.objectContaining({ name: "Alex" })]);
     expect(conversation.json()).toMatchObject({
       events: [expect.objectContaining({ text: "Is six still open?" })],
+    });
+    expect(operatorSnapshot.json()).toMatchObject({
+      conversations: expect.any(Array),
+      selectedConversation: expect.objectContaining({
+        conversation: expect.objectContaining({ id: conversationId }),
+      }),
+      waitlist: expect.any(Array),
+      activity: expect.any(Array),
+      generatedAt: now,
     });
   });
 
