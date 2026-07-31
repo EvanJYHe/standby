@@ -175,6 +175,12 @@ export interface CustomerDetail {
   notes: CustomerNote[];
 }
 
+export interface CustomerWorkspaceSnapshot {
+  customers: CustomerSummary[];
+  selectedCustomer?: CustomerDetail;
+  generatedAt: string;
+}
+
 export interface ConversationSummary {
   id: string;
   customerId: string;
@@ -273,6 +279,7 @@ export interface StandbyApi {
   patchSettings(patch: Partial<SchedulingSettings>): Promise<SchedulingSettings>;
   resetDemo(): Promise<{ status: string; demoDate: string }>;
   getCustomers(query: string): Promise<CustomerSummary[]>;
+  getCustomerWorkspace?(selectedId?: string): Promise<CustomerWorkspaceSnapshot>;
   createCustomer(input: { name: string; contactPreference?: "telegram" | "voice"; phone?: string }): Promise<CustomerSummary>;
   getCustomer(id: string): Promise<CustomerDetail>;
   patchCustomer(id: string, patch: Partial<CustomerDetail["preferences"]>): Promise<CustomerDetail>;

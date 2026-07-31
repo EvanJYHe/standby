@@ -8,6 +8,7 @@ import type {
   CustomerDetail,
   CustomerNote,
   CustomerSummary,
+  CustomerWorkspaceSnapshot,
   OperationResult,
   OperatorWaitlistEntry,
   OperatorSnapshot,
@@ -99,6 +100,10 @@ export const defaultApi: StandbyApi = {
   getCustomers: (query) => request<CustomerSummary[]>(
     `/api/v1/customers?q=${encodeURIComponent(query)}`,
   ),
+  getCustomerWorkspace: (selectedId) => {
+    const query = selectedId === undefined ? "" : `?selectedId=${encodeURIComponent(selectedId)}`;
+    return request<CustomerWorkspaceSnapshot>(`/api/v1/customer-workspace${query}`);
+  },
   createCustomer: (input) => request<CustomerSummary>("/api/v1/customers", {
     method: "POST",
     body: JSON.stringify(input),

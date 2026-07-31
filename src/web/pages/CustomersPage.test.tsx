@@ -232,49 +232,67 @@ function api(): StandbyApi {
 afterEach(cleanup);
 
 describe("CustomersPage", () => {
-  it("explains the AI booking pool and filters customers by actionable state", async () => {
+  it("hydrates the contacts table and selected record from one workspace snapshot", async () => {
+    const client = api();
+    client.getCustomerWorkspace = vi.fn(async () => ({
+      customers: summaries,
+      selectedCustomer: customer("alex"),
+      generatedAt: "2026-07-20T12:00:00.000Z",
+    }));
+
+    render(<CustomersPage api={client} refreshKey={0} />);
+
+    expect(await screen.findByRole("region", { name: "Alex customer record" })).toBeInTheDocument();
+    expect(client.getCustomerWorkspace).toHaveBeenCalledTimes(1);
+    expect(client.getCustomers).not.toHaveBeenCalled();
+    expect(client.getCustomer).not.toHaveBeenCalled();
+  });
+
+  it("shows CRM views and filters customers by actionable state", async () => {
     const user = userEvent.setup();
     render(<CustomersPage api={api()} refreshKey={0} />);
 
-    expect(await screen.findByRole("heading", { name: "Customer intelligence" })).toBeInTheDocument();
-    const allCustomers = screen.getByRole("button", { name: /All customers 4/ });
+    expect(await screen.findByRole("heading", { name: "Customers" })).toBeInTheDocument();
+    const allCustomers = screen.getByRole("tab", { name: /All customers\s*4/ });
     expect(allCustomers).toBeInTheDocument();
-    expect(allCustomers.parentElement).toHaveClass("rounded-[14px]");
-    expect(screen.getByRole("button", { name: /Booked 1/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Waitlisted 1/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Ready to contact 1/ })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Booked\s*1/ })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Waitlisted\s*1/ })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Ready to contact\s*1/ })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /Ready to contact 1/ }));
+    await user.click(screen.getByRole("tab", { name: /Ready to contact\s*1/ }));
     expect(screen.getByRole("button", { name: /Olivia/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Sarah/ })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /Olivia/ }));
     const record = await screen.findByRole("region", { name: "Olivia customer record" });
-    expect(record.parentElement).toHaveClass("rounded-[14px]");
     expect(within(record).getByText("Ready to contact")).toBeInTheDocument();
-    expect(within(record).getByText("Booking")).toBeInTheDocument();
+    expect(within(record).getByText("Relationship")).toBeInTheDocument();
     expect(within(record).getByText("4 visits")).toBeInTheDocument();
-    expect(within(record).getByText("Signature haircut · Maya")).toBeInTheDocument();
-    expect(within(record).getByText("Last Jun 22, 2026")).toBeInTheDocument();
+    expect(within(record).getByText("Signature haircut")).toBeInTheDocument();
+    expect(within(record).getByText("Maya")).toBeInTheDocument();
+    expect(within(record).getByText("Jun 22, 2026")).toBeInTheDocument();
   });
 
   it("searches customers and shows one masked operational record", async () => {
     const user = userEvent.setup();
     render(<CustomersPage api={api()} refreshKey={0} />);
 
-    expect(await screen.findByRole("heading", { name: "Customer intelligence" })).toBeInTheDocument();
-    expect(screen.getByRole("searchbox", { name: "Search customers" })).toHaveClass("rounded-standby");
+    expect(await screen.findByRole("heading", { name: "Customers" })).toBeInTheDocument();
+    expect(screen.getByRole("searchbox", { name: "Search customers" })).toBeInTheDocument();
     await user.click(await screen.findByRole("button", { name: /Sarah/ }));
     const record = await screen.findByRole("region", { name: "Sarah customer record" });
 
     expect(within(record).getByText("••• ••• 0101")).toBeInTheDocument();
     expect(within(record).getByText("Not linked")).toBeInTheDocument();
     expect(screen.queryByText("+14165550101")).not.toBeInTheDocument();
-    for (const section of ["Preferences", "Appointments", "Waitlist", "Private notes"]) {
-      expect(within(record).getByRole("heading", { name: section })).toBeInTheDocument();
-    }
+    expect(within(record).getByRole("heading", { name: "Outreach preferences" })).toBeInTheDocument();
+    expect(within(record).getByRole("tab", { name: /Appointments 2/ })).toBeInTheDocument();
+    expect(within(record).getByRole("tab", { name: /Waitlist 0/ })).toBeInTheDocument();
+    expect(within(record).getByRole("tab", { name: /Notes 1/ })).toBeInTheDocument();
+    await user.click(within(record).getByRole("tab", { name: /Appointments 2/ }));
     expect(within(record).getByText("Upcoming")).toBeInTheDocument();
     expect(within(record).getByText("Past")).toBeInTheDocument();
+    await user.click(within(record).getByRole("tab", { name: /Notes 1/ }));
     expect(within(record).getByText("Prefers a quick phone call.")).toBeInTheDocument();
 
     await user.clear(screen.getByRole("searchbox", { name: "Search customers" }));
@@ -291,35 +309,36 @@ describe("CustomersPage", () => {
     await user.click(await screen.findByRole("button", { name: /Sarah/ }));
     await screen.findByRole("region", { name: "Sarah customer record" });
 
-    await user.click(screen.getByRole("checkbox", { name: "Offer earlier appointments" }));
+    await user.click(screen.getByRole("switch", { name: "Offer earlier appointments" }));
     await waitFor(() => expect(client.patchCustomer).toHaveBeenCalledWith(
       "sarah",
       { earlierMoveConsent: false },
     ));
-    await user.click(screen.getByRole("checkbox", { name: "Any qualified barber" }));
+    await user.click(screen.getByRole("switch", { name: "Any qualified barber" }));
     await waitFor(() => expect(client.patchCustomer).toHaveBeenCalledWith(
       "sarah",
       { flexibleBarberPreference: true },
     ));
-    await user.click(screen.getByRole("checkbox", { name: "Past-customer outreach" }));
+    await user.click(screen.getByRole("switch", { name: "Past-customer outreach" }));
     await waitFor(() => expect(client.patchCustomer).toHaveBeenCalledWith(
       "sarah",
       { pastCustomerOptIn: false },
     ));
-    await user.click(screen.getByRole("checkbox", { name: "Receive replacement offers" }));
+    await user.click(screen.getByRole("switch", { name: "Replacement offers" }));
     await waitFor(() => expect(client.patchCustomer).toHaveBeenCalledWith(
       "sarah",
       { replacementOffersEnabled: false },
     ));
 
+    await user.click(screen.getByRole("tab", { name: /Notes 1/ }));
     await user.type(screen.getByLabelText("New private note"), "  Ask about a beard trim next time.  ");
-    await user.click(screen.getByRole("button", { name: "Add private note" }));
+    await user.click(screen.getByRole("button", { name: "Add note" }));
     await waitFor(() => expect(client.addCustomerNote).toHaveBeenCalledWith(
       "sarah",
       "Ask about a beard trim next time.",
     ));
     expect(await screen.findByText("Ask about a beard trim next time.")).toBeInTheDocument();
-    expect(client.getCustomer).toHaveBeenCalledTimes(7);
+    expect(client.getCustomer).toHaveBeenCalledTimes(2);
     expect(screen.queryByText(/segments|lifetime value|campaign/i)).not.toBeInTheDocument();
   });
 
@@ -330,6 +349,7 @@ describe("CustomersPage", () => {
 
     await user.click(await screen.findByRole("button", { name: /Sarah/ }));
     const record = await screen.findByRole("region", { name: "Sarah customer record" });
+    await user.click(within(record).getByRole("tab", { name: /Appointments 2/ }));
     await user.click(within(record).getByRole("button", { name: /Cancel Signature haircut/ }));
 
     expect(client.cancelAppointment).not.toHaveBeenCalled();

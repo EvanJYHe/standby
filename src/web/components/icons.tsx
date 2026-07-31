@@ -123,6 +123,24 @@ export function PlusIcon(props: IconProps) {
   );
 }
 
+export function SearchIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.7" />
+      <path d="m16 16 4 4" stroke="currentColor" strokeLinecap="round" strokeWidth="1.7" />
+    </IconBase>
+  );
+}
+
+export function NoteIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M5 4h14v16H5V4Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.7" />
+      <path d="M8 8h8M8 12h8M8 16h5" stroke="currentColor" strokeLinecap="round" strokeWidth="1.7" />
+    </IconBase>
+  );
+}
+
 export function SyncIcon(props: IconProps) {
   return (
     <IconBase {...props}>

@@ -407,6 +407,22 @@ export async function buildServer(options: BuildServerOptions): Promise<FastifyI
     return projectCustomerList(await options.store.read(), query.q ?? "");
   });
 
+  app.get("/api/v1/customer-workspace", async (request) => {
+    const query = z.object({ selectedId: z.string().max(100).optional() }).strict().parse(request.query);
+    const state = await options.store.read();
+    const customers = projectCustomerList(state);
+    const selectedId = query.selectedId !== undefined
+      && customers.some((customer) => customer.id === query.selectedId)
+      ? query.selectedId
+      : customers[0]?.id;
+    const selectedCustomer = selectedId === undefined ? undefined : projectCustomerDetail(state, selectedId);
+    return {
+      customers,
+      ...(selectedCustomer === undefined ? {} : { selectedCustomer }),
+      generatedAt: clock(),
+    };
+  });
+
   app.post("/api/v1/customers", async (request, reply) => {
     const input = customerCreateSchema.parse(request.body);
     const created = await options.store.transaction((state) => {

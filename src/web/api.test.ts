@@ -59,6 +59,25 @@ describe("Standby browser API", () => {
     );
   });
 
+  it("loads the customer table and selected record with one snapshot request", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      customers: [],
+      generatedAt: "2026-07-20T12:00:00.000Z",
+    }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await Promise.all([
+      defaultApi.getCustomerWorkspace?.("alex"),
+      defaultApi.getCustomerWorkspace?.("alex"),
+    ]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/customer-workspace?selectedId=alex",
+      expect.objectContaining({ headers: {} }),
+    );
+  });
+
   it("surfaces stale appointment conflicts with their HTTP status", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
       type: "conflict",

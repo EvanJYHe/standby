@@ -148,7 +148,7 @@ describe("DashboardApp shell", () => {
     expect(screen.queryByRole("heading", { name: "Unlock operator workspace" })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Customers" }));
-    expect(screen.getByRole("heading", { name: "Customer intelligence" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Customers" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Unlock operator workspace" })).not.toBeInTheDocument();
   });
 

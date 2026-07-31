@@ -76,12 +76,13 @@ describe("Standby Fastify API", () => {
   it("opens local operator routes without a bearer session", async () => {
     const responses = await Promise.all([
       app.inject({ method: "GET", url: "/api/v1/customers" }),
+      app.inject({ method: "GET", url: "/api/v1/customer-workspace" }),
       app.inject({ method: "GET", url: "/api/v1/conversations" }),
       app.inject({ method: "GET", url: "/api/v1/waitlist" }),
       app.inject({ method: "GET", url: "/api/v1/activity" }),
     ]);
 
-    expect(responses.map((response) => response.statusCode)).toEqual([200, 200, 200, 200]);
+    expect(responses.map((response) => response.statusCode)).toEqual([200, 200, 200, 200, 200]);
     expect((await app.inject({
       method: "POST",
       url: "/api/v1/admin/session",
@@ -329,6 +330,7 @@ describe("Standby Fastify API", () => {
 
     const customers = await app.inject({ method: "GET", url: "/api/v1/customers?q=alex" });
     const detail = await app.inject({ method: "GET", url: "/api/v1/customers/alex" });
+    const customerWorkspace = await app.inject({ method: "GET", url: "/api/v1/customer-workspace?selectedId=alex" });
     const waitlist = await app.inject({ method: "GET", url: "/api/v1/waitlist" });
     const conversations = await app.inject({ method: "GET", url: "/api/v1/conversations" });
     const conversationId = conversations.json<Array<{ id: string }>>()[0]!.id;
@@ -339,13 +341,18 @@ describe("Standby Fastify API", () => {
     const activity = await app.inject({ method: "GET", url: "/api/v1/activity" });
     const operatorSnapshot = await app.inject({ method: "GET", url: "/api/v1/operator-snapshot" });
 
-    for (const response of [customers, detail, waitlist, conversations, conversation, activity, operatorSnapshot]) {
+    for (const response of [customers, detail, customerWorkspace, waitlist, conversations, conversation, activity, operatorSnapshot]) {
       expect(response.statusCode).toBe(200);
       expect(response.body).not.toContain("+14165550101");
       expect(response.body).not.toContain("telegramChatId");
       expect(response.body).not.toContain("providerConversationId");
     }
     expect(customers.json()).toEqual([expect.objectContaining({ name: "Alex" })]);
+    expect(customerWorkspace.json()).toMatchObject({
+      customers: expect.any(Array),
+      selectedCustomer: expect.objectContaining({ id: "alex", name: "Alex" }),
+      generatedAt: now,
+    });
     expect(conversation.json()).toMatchObject({
       events: [expect.objectContaining({ text: "Is six still open?" })],
     });
