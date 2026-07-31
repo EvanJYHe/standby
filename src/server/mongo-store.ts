@@ -74,10 +74,12 @@ export class MongoStandbyStore implements StandbyStore {
   private readonly database: Db;
   private readonly listeners = new Set<StateListener>();
   private latestState: StandbyState | undefined;
+  private latestStateAt = 0;
 
   constructor(
     private readonly client: MongoClient,
     databaseName = "standby",
+    private readonly readCacheTtlMs = 250,
   ) {
     this.database = client.db(databaseName);
   }
@@ -89,7 +91,7 @@ export class MongoStandbyStore implements StandbyStore {
       await this.replace(seedState);
       return;
     }
-    this.latestState = await this.readState();
+    this.cache(await this.readState());
   }
 
   async ensureIndexes(): Promise<void> {
@@ -200,6 +202,9 @@ export class MongoStandbyStore implements StandbyStore {
     if (this.latestState === undefined) {
       throw new Error("MongoStandbyStore must be initialized before reading state.");
     }
+    if (Date.now() - this.latestStateAt >= this.readCacheTtlMs) {
+      this.cache(await this.readState());
+    }
     return structuredClone(this.latestState);
   }
 
@@ -248,8 +253,13 @@ export class MongoStandbyStore implements StandbyStore {
   }
 
   private publish(state: StandbyState): void {
+    this.cache(state);
+    for (const listener of this.listeners) listener(structuredClone(state));
+  }
+
+  private cache(state: StandbyState): void {
     this.latestState = structuredClone(state);
-    for (const listener of this.listeners) listener(structuredClone(this.latestState));
+    this.latestStateAt = Date.now();
   }
 
   private async readState(session?: ClientSession): Promise<StandbyState> {

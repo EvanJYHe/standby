@@ -147,6 +147,24 @@ describe("MongoStandbyStore", () => {
     expect(snapshot.events).toContainEqual(expect.objectContaining({ id: "event-1" }));
   });
 
+  it("observes changes committed by another server instance", async () => {
+    const observer = new MongoStandbyStore(client, databaseName, 0);
+    await observer.initialize(initialState());
+
+    await store.transaction((state) => {
+      state.events.push({
+        id: "event-from-another-instance",
+        type: "appointment.updated",
+        aggregateId: "first",
+        occurredAt: "2026-07-20T15:10:00.000Z",
+      });
+    });
+
+    expect((await observer.read()).events).toContainEqual(
+      expect.objectContaining({ id: "event-from-another-instance" }),
+    );
+  });
+
   it("round-trips normalized conversations and customer notes", async () => {
     await store.transaction((state) => {
       state.conversations.push({
