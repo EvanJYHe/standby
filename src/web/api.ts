@@ -9,6 +9,7 @@ import type {
   CustomerNote,
   CustomerSummary,
   CustomerWorkspaceSnapshot,
+  GoogleCalendarOAuthConfig,
   OperationResult,
   OperatorWaitlistEntry,
   OperatorSnapshot,
@@ -79,6 +80,9 @@ function request<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export const defaultApi: StandbyApi = {
+  getGoogleCalendarOAuthConfig: () => request<GoogleCalendarOAuthConfig>(
+    "/api/v1/integrations/google/config",
+  ),
   getCalendar: (date) => request<CalendarResponse>(`/api/v1/calendar?date=${encodeURIComponent(date)}`),
   getCalendarRange: (start, end) => request<CalendarResponse>(
     `/api/v1/calendar?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`,

@@ -61,6 +61,7 @@ function calendar(date = "2026-07-20"): CalendarResponse {
 
 function api(): StandbyApi {
   return {
+    getGoogleCalendarOAuthConfig: vi.fn(async () => ({ configured: false as const })),
     getCalendar: vi.fn(async (date: string) => calendar(date)),
     getCalendarRange: vi.fn(async (start: string, end: string) => ({
       ...calendar(start),

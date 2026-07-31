@@ -34,6 +34,7 @@ const config: AppConfig = {
   backboardApiKey: "backboard-key",
   backboardAssistantId: "assistant-1",
   backboardApiIp: undefined,
+  googleOAuthClientId: undefined,
   voiceAgent: {
     provider: "elevenlabs",
     outboundEnabled: false,

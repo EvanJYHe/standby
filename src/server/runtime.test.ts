@@ -26,6 +26,7 @@ const config: AppConfig = {
   backboardApiKey: undefined,
   backboardAssistantId: undefined,
   backboardApiIp: undefined,
+  googleOAuthClientId: undefined,
   voiceAgent: { provider: "disabled", outboundEnabled: false },
 };
 

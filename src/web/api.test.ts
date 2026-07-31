@@ -7,6 +7,23 @@ afterEach(() => {
 });
 
 describe("Standby browser API", () => {
+  it("loads the public Google Calendar OAuth configuration", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      configured: true,
+      clientId: "standby.apps.googleusercontent.com",
+    }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(defaultApi.getGoogleCalendarOAuthConfig()).resolves.toEqual({
+      configured: true,
+      clientId: "standby.apps.googleusercontent.com",
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/integrations/google/config",
+      expect.objectContaining({ headers: {} }),
+    );
+  });
+
   it("requests authoritative calendar ranges", async () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ range: {} }), {
       status: 200,

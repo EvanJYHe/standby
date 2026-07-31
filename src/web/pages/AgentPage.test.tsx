@@ -197,6 +197,7 @@ const activity: ActivityItem[] = [{
 
 function api(overrides: Partial<StandbyApi> = {}): StandbyApi {
   return {
+    getGoogleCalendarOAuthConfig: vi.fn(async () => ({ configured: false as const })),
     getCalendar: vi.fn(async () => { throw new Error("unused"); }),
     getCalendarRange: vi.fn(async () => { throw new Error("unused"); }),
     getAvailability: vi.fn(async () => { throw new Error("unused"); }),
@@ -236,7 +237,10 @@ describe("AgentPage", () => {
     expect(screen.getByText(/Exception/)).toBeInTheDocument();
     expect(container.querySelector(".rounded-full.bg-standby")).toBeNull();
     expect(container.querySelector(".rounded-full.bg-amber")).toBeNull();
-    expect(screen.getByRole("region", { name: "Agent inbox" })).toHaveClass("rounded-[14px]");
+    const workspace = screen.getByRole("region", { name: "Agent workspace" });
+    expect(workspace).toHaveClass("rounded-[14px]");
+    expect(within(workspace).getByRole("group", { name: "Agent workspace views" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Agent" })).toHaveClass("sr-only");
 
     expect(await screen.findByText("A 6 PM chair opened with Jeremy.")).toBeInTheDocument();
     const question = screen.getByText("Is the haircut still forty-five dollars?");
@@ -288,7 +292,7 @@ describe("AgentPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Waitlist" }));
     const panel = await screen.findByRole("region", { name: "Open waitlist" });
-    expect(panel).toHaveClass("rounded-[14px]");
+    expect(screen.getByRole("region", { name: "Agent workspace" })).toContainElement(panel);
     expect(within(panel).getByText("Alex")).toBeInTheDocument();
     expect(within(panel).getByText("Signature haircut · Jeremy")).toBeInTheDocument();
 
@@ -315,7 +319,7 @@ describe("AgentPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Activity" }));
     const activityPanel = screen.getByRole("region", { name: "Scheduling activity" });
-    expect(activityPanel).toHaveClass("rounded-[14px]");
+    expect(screen.getByRole("region", { name: "Agent workspace" })).toContainElement(activityPanel);
     expect(within(activityPanel).getByText("Josh's appointment was cancelled; Standby opened refill work.")).toBeInTheDocument();
     expect(screen.queryByText(/API key|raw webhook|voice laboratory/i)).not.toBeInTheDocument();
   });

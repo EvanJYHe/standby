@@ -22,6 +22,7 @@ const settings: SchedulingSettings = {
 function api(): StandbyApi {
   let current = { ...settings };
   return {
+    getGoogleCalendarOAuthConfig: vi.fn(async () => ({ configured: false as const })),
     getCalendar: vi.fn(async () => { throw new Error("unused"); }),
     getCalendarRange: vi.fn(async () => { throw new Error("unused"); }),
     getAvailability: vi.fn(async () => { throw new Error("unused"); }),

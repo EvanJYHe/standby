@@ -91,3 +91,15 @@ Open `http://127.0.0.1:5174` for the landing page and `/app` for the product.
 The default command always uses the seeded memory store, so it works without an
 `.env` file. Copy `.env.example` and run `npm run dev:api:integrations` only when
 working on the optional provider adapters.
+
+## Google Calendar access
+
+The Calendar workspace can request real event access through the Google
+Identity Services popup. Enable the Google Calendar API, create a **Web
+application** OAuth client, add the app's exact local and production origins,
+then set its public ID as `GOOGLE_OAUTH_CLIENT_ID`.
+
+Standby requests event read/write and calendar-list access, proves the grant
+against the Calendar API, and keeps the short-lived access token in browser
+memory only. This intentionally supports an interactive demo session—not
+background sync or stored refresh tokens.

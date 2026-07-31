@@ -15,17 +15,26 @@ import {
   XIcon,
 } from "../components/icons.js";
 import { Button, Drawer, IconButton, Modal, SegmentedControl, cn } from "../components/ui.js";
+import {
+  browserGoogleCalendarIntegration,
+  type GoogleCalendarConnectionToken,
+  type GoogleCalendarIntegration,
+  GoogleCalendarIntegrationError,
+  type GoogleCalendarVerification,
+} from "../integrations/google-calendar.js";
 import { movePeriod, periodLabel, periodRange, type CalendarView } from "../lib/dates.js";
 import type {
   ActiveRefill,
   CalendarAppointment,
   CalendarResponse,
   CustomerSummary,
+  GoogleCalendarOAuthConfig,
   StandbyApi,
 } from "../types.js";
 
 interface CalendarPageProps {
   api: StandbyApi;
+  googleCalendarIntegration?: GoogleCalendarIntegration | undefined;
   calendar: CalendarResponse | undefined;
   anchorDate: string;
   view: CalendarView;
@@ -35,6 +44,15 @@ interface CalendarPageProps {
   onViewChange: (view: CalendarView) => void;
   onBarberFilterChange: (barberId: string) => void;
   onMutated: () => Promise<void>;
+}
+
+type GoogleCalendarConnectionState = GoogleCalendarConnectionToken & GoogleCalendarVerification;
+
+function googleCalendarErrorMessage(error: unknown): string {
+  if (error instanceof GoogleCalendarIntegrationError) return error.message;
+  return error instanceof Error
+    ? error.message
+    : "Google Calendar could not be connected. Try again.";
 }
 
 const pixelsPerHour = 64;
@@ -853,42 +871,85 @@ function CalendarLoadingGrid() {
   );
 }
 
-function CalendarIntegrations({ onStatus }: { onStatus: (message: string) => void }) {
-  const [outlookConnected, setOutlookConnected] = useState(false);
+function CalendarIntegrations({
+  configuration,
+  connection,
+  googleBusy,
+  googleReady,
+  onGoogleAction,
+  onGoogleDisconnect,
+  onStatus,
+}: {
+  configuration: GoogleCalendarOAuthConfig | undefined;
+  connection: GoogleCalendarConnectionState | undefined;
+  googleBusy: boolean;
+  googleReady: boolean;
+  onGoogleAction: () => void;
+  onGoogleDisconnect: () => void;
+  onStatus: (message: string) => void;
+}) {
+  const googleStatus = googleBusy
+    ? "Working…"
+    : connection !== undefined
+      ? `Connected · ${connection.calendarCount} ${connection.calendarCount === 1 ? "calendar" : "calendars"}`
+      : configuration === undefined
+        ? "Checking setup…"
+        : !configuration.configured
+          ? "Setup required"
+          : googleReady
+            ? "Not connected"
+            : "Loading sign-in…";
+
   return (
     <section className="mt-6 border-t border-[#e8eaed] pt-5" aria-label="Calendar integrations">
       <h3 className="px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">Integrations</h3>
       <div className="mt-2 space-y-1">
+        <div className="flex items-center rounded-[8px] transition-colors hover:bg-[#f1f3f4]">
+          <button
+            aria-label={connection === undefined ? "Connect Google Calendar" : "Check Google Calendar access"}
+            className="flex min-w-0 flex-1 items-center gap-3 px-2 py-2 text-left disabled:cursor-wait"
+            disabled={googleBusy}
+            onClick={onGoogleAction}
+            type="button"
+          >
+            <GoogleCalendarIcon className="h-5 w-5 shrink-0" />
+            <span className="min-w-0 flex-1">
+              <strong className="block truncate text-[12px] font-medium text-ink">Google Calendar</strong>
+              <span className={cn(
+                "block truncate text-[10px]",
+                connection === undefined ? "text-muted" : "text-[#188038]",
+              )}>
+                {googleStatus}
+              </span>
+            </span>
+            {googleBusy || connection !== undefined
+              ? <SyncIcon className={cn("h-3.5 w-3.5 text-muted", googleBusy && "animate-spin")} />
+              : <span className="text-[10px] font-semibold text-[#1a73e8]">Add</span>}
+          </button>
+          {connection === undefined ? null : (
+            <button
+              aria-label="Disconnect Google Calendar"
+              className="mr-1 rounded px-1.5 py-1 text-[9px] font-medium text-muted hover:bg-white hover:text-ink"
+              disabled={googleBusy}
+              onClick={onGoogleDisconnect}
+              type="button"
+            >
+              Remove
+            </button>
+          )}
+        </div>
         <button
-          aria-label="Sync Google Calendar"
+          aria-label="Connect Outlook Calendar"
           className="flex w-full items-center gap-3 rounded-[8px] px-2 py-2 text-left transition-colors hover:bg-[#f1f3f4]"
-          onClick={() => onStatus("Google Calendar is up to date")}
-          type="button"
-        >
-          <GoogleCalendarIcon className="h-5 w-5 shrink-0" />
-          <span className="min-w-0 flex-1">
-            <strong className="block truncate text-[12px] font-medium text-ink">Google Calendar</strong>
-            <span className="block truncate text-[10px] text-[#188038]">Connected · two-way sync</span>
-          </span>
-          <SyncIcon className="h-3.5 w-3.5 text-muted" />
-        </button>
-        <button
-          aria-label={outlookConnected ? "Disconnect Outlook Calendar" : "Connect Outlook Calendar"}
-          className="flex w-full items-center gap-3 rounded-[8px] px-2 py-2 text-left transition-colors hover:bg-[#f1f3f4]"
-          onClick={() => {
-            setOutlookConnected((current) => !current);
-            onStatus(outlookConnected ? "Outlook disconnected" : "Outlook calendar connected");
-          }}
+          onClick={() => onStatus("Outlook Calendar is not available in this build yet.")}
           type="button"
         >
           <OutlookIcon className="h-5 w-5 shrink-0" />
           <span className="min-w-0 flex-1">
             <strong className="block truncate text-[12px] font-medium text-ink">Outlook</strong>
-            <span className={cn("block truncate text-[10px]", outlookConnected ? "text-[#188038]" : "text-muted")}>
-              {outlookConnected ? "Connected · two-way sync" : "Not connected"}
-            </span>
+            <span className="block truncate text-[10px] text-muted">Not connected</span>
           </span>
-          <span className="text-[10px] font-semibold text-[#1a73e8]">{outlookConnected ? "On" : "Add"}</span>
+          <span className="text-[10px] font-semibold text-muted">Soon</span>
         </button>
       </div>
     </section>
@@ -897,6 +958,7 @@ function CalendarIntegrations({ onStatus }: { onStatus: (message: string) => voi
 
 export function CalendarPage({
   api,
+  googleCalendarIntegration = browserGoogleCalendarIntegration,
   calendar,
   anchorDate,
   view,
@@ -911,8 +973,96 @@ export function CalendarPage({
   const [anchorRect, setAnchorRect] = useState<DOMRect>();
   const [selectedRefill, setSelectedRefill] = useState<ActiveRefill>();
   const [editor, setEditor] = useState<"new" | "edit">();
-  const [syncNotice, setSyncNotice] = useState("Google Calendar synced just now");
+  const [googleConfiguration, setGoogleConfiguration] = useState<GoogleCalendarOAuthConfig>();
+  const [googleConnection, setGoogleConnection] = useState<GoogleCalendarConnectionState>();
+  const [googleReady, setGoogleReady] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
+  const [syncNotice, setSyncNotice] = useState("");
   const range = useMemo(() => periodRange(anchorDate, view), [anchorDate, view]);
+
+  useEffect(() => {
+    let active = true;
+    setGoogleReady(false);
+    void api.getGoogleCalendarOAuthConfig()
+      .then(async (configuration) => {
+        if (!active) return;
+        setGoogleConfiguration(configuration);
+        if (!configuration.configured) return;
+        await googleCalendarIntegration.prepare(configuration.clientId);
+        if (active) setGoogleReady(true);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setGoogleConfiguration({ configured: false });
+        setSyncNotice(googleCalendarErrorMessage(error));
+      });
+    return () => {
+      active = false;
+    };
+  }, [api, googleCalendarIntegration]);
+
+  const connectOrVerifyGoogleCalendar = async () => {
+    if (googleBusy) return;
+    if (googleConfiguration === undefined) {
+      setSyncNotice("Google Calendar setup is still loading.");
+      return;
+    }
+    if (!googleConfiguration.configured) {
+      setSyncNotice("Google Calendar needs an OAuth client ID before it can connect.");
+      return;
+    }
+    if (!googleReady) {
+      setSyncNotice("Google sign-in is still loading. Try again in a moment.");
+      return;
+    }
+
+    setGoogleBusy(true);
+    try {
+      const currentConnection = googleConnection !== undefined && googleConnection.expiresAt > Date.now() + 5_000
+        ? googleConnection
+        : undefined;
+      if (currentConnection === undefined) {
+        if (googleConnection !== undefined) setGoogleConnection(undefined);
+        const token = await googleCalendarIntegration.connect();
+        const verification = await googleCalendarIntegration.verify(token.accessToken);
+        setGoogleConnection({ ...token, ...verification });
+        setSyncNotice(
+          verification.primaryCalendarName === undefined
+            ? `Google Calendar connected · ${verification.calendarCount} calendars available.`
+            : `Google Calendar connected · ${verification.primaryCalendarName}.`,
+        );
+      } else {
+        const verification = await googleCalendarIntegration.verify(currentConnection.accessToken);
+        setGoogleConnection({ ...currentConnection, ...verification });
+        setSyncNotice("Google Calendar access verified.");
+      }
+    } catch (error) {
+      if (
+        error instanceof GoogleCalendarIntegrationError
+        && (error.code === "AUTH_EXPIRED" || error.code === "INVALID_ACCESS_TOKEN")
+      ) {
+        setGoogleConnection(undefined);
+      }
+      setSyncNotice(googleCalendarErrorMessage(error));
+    } finally {
+      setGoogleBusy(false);
+    }
+  };
+
+  const disconnectGoogleCalendar = async () => {
+    if (googleConnection === undefined || googleBusy) return;
+    const accessToken = googleConnection.accessToken;
+    setGoogleBusy(true);
+    try {
+      await googleCalendarIntegration.disconnect(accessToken);
+      setSyncNotice("Google Calendar disconnected.");
+    } catch (error) {
+      setSyncNotice(`${googleCalendarErrorMessage(error)} The local connection was cleared.`);
+    } finally {
+      setGoogleConnection(undefined);
+      setGoogleBusy(false);
+    }
+  };
 
   const openAppointment = (appointment: CalendarAppointment, rect: DOMRect) => {
     setSelectedAppointment(appointment);
@@ -945,13 +1095,16 @@ export function CalendarPage({
           </div>
           <div className="flex items-center gap-2">
             <Button
-              aria-label="Sync calendars"
+              aria-label={googleConnection === undefined
+                ? "Connect Google Calendar from toolbar"
+                : "Check Google Calendar access from toolbar"}
               className="hidden h-9 px-3 sm:inline-flex"
-              onClick={() => setSyncNotice("All calendars are up to date")}
+              disabled={googleBusy}
+              onClick={connectOrVerifyGoogleCalendar}
               variant="secondary"
             >
-              <SyncIcon className="h-4 w-4" />
-              Sync
+              <SyncIcon className={cn("h-4 w-4", googleBusy && "animate-spin")} />
+              {googleConnection === undefined ? "Connect" : "Check access"}
             </Button>
             <SegmentedControl
               label="Calendar view"
@@ -1007,8 +1160,18 @@ export function CalendarPage({
               ))}
             </div>
           </div>
-          <CalendarIntegrations onStatus={setSyncNotice} />
-          <p aria-live="polite" className="mt-4 px-1 text-[10px] leading-4 text-muted">{syncNotice}</p>
+          <CalendarIntegrations
+            configuration={googleConfiguration}
+            connection={googleConnection}
+            googleBusy={googleBusy}
+            googleReady={googleReady}
+            onGoogleAction={connectOrVerifyGoogleCalendar}
+            onGoogleDisconnect={disconnectGoogleCalendar}
+            onStatus={setSyncNotice}
+          />
+          {syncNotice === "" ? null : (
+            <p aria-live="polite" className="mt-4 px-1 text-[10px] leading-4 text-muted">{syncNotice}</p>
+          )}
         </aside>
         <div className={cn("min-h-0 min-w-0 overflow-x-auto", view === "month" ? "overflow-y-auto bg-white p-3" : "") }>
           {calendar === undefined ? (

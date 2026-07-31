@@ -186,6 +186,13 @@ export async function buildServer(options: BuildServerOptions): Promise<FastifyI
     providers: providerReadiness(options.config, storeKind),
   }));
 
+  app.get("/api/v1/integrations/google/config", async (_request, reply) => {
+    reply.header("Cache-Control", "no-store");
+    return options.config.googleOAuthClientId === undefined
+      ? { configured: false as const }
+      : { configured: true as const, clientId: options.config.googleOAuthClientId };
+  });
+
   app.post("/webhooks/telegram", async (request, reply) => {
     if (options.telegramWebhook === undefined || options.config.telegramWebhookSecret === undefined) {
       return reply.status(503).send({ error: "telegram_unconfigured" });

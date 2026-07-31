@@ -266,7 +266,12 @@ export interface AppointmentInput {
   startAt: string;
 }
 
+export type GoogleCalendarOAuthConfig =
+  | { configured: false }
+  | { configured: true; clientId: string };
+
 export interface StandbyApi {
+  getGoogleCalendarOAuthConfig(): Promise<GoogleCalendarOAuthConfig>;
   getCalendar(date: string): Promise<CalendarResponse>;
   getCalendarRange(start: string, end: string): Promise<CalendarResponse>;
   getAvailability(input: {

@@ -26,6 +26,7 @@ const environmentSchema = z.object({
   BACKBOARD_API_KEY: optionalString,
   BACKBOARD_ASSISTANT_ID: optionalString,
   BACKBOARD_API_IP: z.preprocess(emptyToUndefined, z.ipv4().optional()),
+  GOOGLE_OAUTH_CLIENT_ID: optionalString,
   VOICE_PROVIDER: z.preprocess(
     emptyToUndefined,
     z.enum(["disabled", "elevenlabs"]).default("disabled"),
@@ -74,6 +75,7 @@ export interface AppConfig {
   backboardApiKey: string | undefined;
   backboardAssistantId: string | undefined;
   backboardApiIp: string | undefined;
+  googleOAuthClientId: string | undefined;
   voiceAgent: VoiceAgentConfig;
 }
 
@@ -137,6 +139,7 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
     backboardApiKey: parsed.BACKBOARD_API_KEY,
     backboardAssistantId: parsed.BACKBOARD_ASSISTANT_ID,
     backboardApiIp: parsed.BACKBOARD_API_IP,
+    googleOAuthClientId: parsed.GOOGLE_OAUTH_CLIENT_ID,
     voiceAgent,
   };
 }

@@ -228,7 +228,7 @@ function Inbox({ conversations, selectedId, detail, loadingDetail, search, chann
   };
 
   return (
-    <div aria-label="Agent inbox" className="mx-auto grid w-full max-w-[1500px] overflow-hidden rounded-[14px] border border-line bg-panel shadow-panel lg:grid-cols-[250px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)_300px]" role="region">
+    <div aria-label="Agent inbox" className="grid w-full bg-panel lg:grid-cols-[250px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)_300px]" role="region">
       <section className="border-r border-line">
         <div className="border-b border-line p-4">
           <h3 className="text-sm font-semibold">Conversations</h3>
@@ -323,7 +323,7 @@ function WaitlistPanel({ api, entries, onEntriesChange }: {
   };
 
   return (
-    <section aria-label="Open waitlist" className="mx-auto max-w-5xl overflow-hidden rounded-[14px] border border-line bg-panel shadow-panel">
+    <section aria-label="Open waitlist" className="min-h-[540px] bg-panel">
       <div className="flex items-center justify-between border-b border-line px-5 py-4">
         <div>
           <h3 className="text-sm font-semibold">Open waitlist</h3>
@@ -418,7 +418,7 @@ function WaitlistPanel({ api, entries, onEntriesChange }: {
 
 function ActivityPanel({ activity }: { activity: ActivityItem[] }) {
   return (
-    <section aria-label="Scheduling activity" className="mx-auto max-w-4xl overflow-hidden rounded-[14px] border border-line bg-panel shadow-panel">
+    <section aria-label="Scheduling activity" className="min-h-[540px] bg-panel">
       <div className="border-b border-line px-5 py-4">
         <h3 className="text-sm font-semibold">Scheduling activity</h3>
         <p className="mt-1 text-xs text-muted">Plain-language changes committed by Standby and the front desk.</p>
@@ -441,7 +441,7 @@ function ActivityPanel({ activity }: { activity: ActivityItem[] }) {
 
 function AgentLoadingShell() {
   return (
-    <div aria-label="Loading agent workspace" className="mx-auto grid min-h-[620px] w-full max-w-[1500px] overflow-hidden rounded-[14px] border border-line bg-white lg:grid-cols-[280px_minmax(0,1fr)_300px]" role="status">
+    <div aria-label="Loading agent workspace" className="grid min-h-[620px] w-full bg-white lg:grid-cols-[280px_minmax(0,1fr)_300px]" role="status">
       <div className="border-r border-line p-4">
         <div className="h-10 animate-pulse rounded-[8px] bg-[#f1f3f4]" />
         <div className="mt-5 space-y-4">
@@ -566,22 +566,22 @@ export function AgentPage({ api, refreshKey }: AgentPageProps) {
 
   return (
     <section className="mx-auto max-w-[1760px]">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-4 px-1 py-2">
-        <h2 className="text-[32px] font-semibold tracking-[-0.05em]">Agent</h2>
-        <SegmentedControl
-          label="Agent workspace"
-          onChange={setTab}
-          options={[
-            { value: "inbox", label: "Inbox" },
-            { value: "waitlist", label: "Waitlist" },
-            { value: "activity", label: "Activity" },
-          ]}
-          value={tab}
-        />
-      </div>
-      <div>
+      <h2 className="sr-only">Agent</h2>
+      <div aria-label="Agent workspace" className="mx-auto w-full max-w-[1500px] overflow-hidden rounded-[14px] border border-line bg-panel shadow-panel" role="region">
+        <div className="flex min-h-[52px] items-center border-b border-line px-3 py-2">
+          <SegmentedControl
+            label="Agent workspace views"
+            onChange={setTab}
+            options={[
+              { value: "inbox", label: "Inbox" },
+              { value: "waitlist", label: "Waitlist" },
+              { value: "activity", label: "Activity" },
+            ]}
+            value={tab}
+          />
+        </div>
         {error === undefined ? null : (
-          <p className="mx-auto mb-4 max-w-[1500px] rounded-standby border border-[#ead9b9] bg-amber-soft px-4 py-3 text-sm text-[#7c5b22]" role="alert">
+          <p className="border-b border-[#ead9b9] bg-amber-soft px-4 py-3 text-sm text-[#7c5b22]" role="alert">
             {error}
           </p>
         )}

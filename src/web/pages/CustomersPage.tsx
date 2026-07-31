@@ -64,7 +64,7 @@ const stateStyles: Record<CustomerBookingState, string> = {
 function BookingStateBadge({ state, label }: { state: CustomerBookingState; label: string }) {
   return (
     <span className={cn(
-      "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em]",
+      "inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase leading-none tracking-[0.07em]",
       stateStyles[state],
     )}>
       {label}
@@ -404,8 +404,8 @@ function CustomerTable({ customers, selectedId, onSelect }: {
     return <p className="px-5 py-16 text-center text-sm text-muted">No customers match this view.</p>;
   }
   return (
-    <div className="min-w-[790px]" role="table" aria-label="Customers">
-      <div className="grid grid-cols-[minmax(190px,1.05fr)_125px_minmax(230px,1.35fr)_110px_72px] border-b border-line bg-[#f6f8fa] px-4 py-2 text-[9px] font-semibold uppercase tracking-[0.1em] text-muted" role="row">
+    <div className="min-w-[900px]" role="table" aria-label="Customers">
+      <div className="grid grid-cols-[minmax(205px,0.7fr)_155px_minmax(360px,2fr)_135px_64px] border-b border-line bg-[#f6f8fa] px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted" role="row">
         <span role="columnheader">Customer</span><span role="columnheader">Status</span><span role="columnheader">Next step</span><span role="columnheader">Last visit</span><span className="text-right" role="columnheader">Visits</span>
       </div>
       <div className="divide-y divide-line">
@@ -414,21 +414,21 @@ function CustomerTable({ customers, selectedId, onSelect }: {
             aria-label={`${customer.name}, ${customer.bookingStateLabel}, ${channelLabel(customer)}, ${customerSchedulingLine(customer)}`}
             aria-pressed={selectedId === customer.id}
             className={cn(
-              "relative grid w-full grid-cols-[minmax(190px,1.05fr)_125px_minmax(230px,1.35fr)_110px_72px] items-center px-4 py-3 text-left transition-colors",
+              "relative grid w-full grid-cols-[minmax(205px,0.7fr)_155px_minmax(360px,2fr)_135px_64px] items-center px-5 py-3.5 text-left transition-colors",
               selectedId === customer.id ? "bg-[#fff5f1] before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-landing-coral" : "bg-white hover:bg-[#fafbfc]",
             )}
             key={customer.id}
             onClick={() => onSelect(customer.id)}
             type="button"
           >
-            <span className="flex min-w-0 items-center gap-2.5">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#e9edf2] text-[10px] font-semibold text-[#435164]">{initials(customer.name)}</span>
-              <span className="min-w-0"><strong className="block truncate text-[13px] font-semibold">{customer.name}</strong><span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted">{customer.contactPreference === "voice" ? <PhoneIcon className="h-3 w-3" /> : <TelegramIcon className="h-3 w-3" />}{channelLabel(customer)}</span></span>
+            <span className="flex min-w-0 items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#e9edf2] text-[11px] font-semibold text-[#435164]">{initials(customer.name)}</span>
+              <span className="min-w-0"><strong className="block truncate text-sm font-semibold">{customer.name}</strong><span className="mt-0.5 flex items-center gap-1 text-[11px] text-muted">{customer.contactPreference === "voice" ? <PhoneIcon className="h-3.5 w-3.5" /> : <TelegramIcon className="h-3.5 w-3.5" />}{channelLabel(customer)}</span></span>
             </span>
             <span><BookingStateBadge label={customer.bookingStateLabel} state={customer.bookingState} /></span>
-            <span className="truncate pr-4 text-[11px] text-[#596576]" title={customerSchedulingLine(customer)}>{customerSchedulingLine(customer)}</span>
-            <span className="text-[11px] text-muted">{customer.lastVisitAt === undefined ? "—" : formatVisitDate(customer.lastVisitAt)}</span>
-            <span className="text-right text-[12px] font-medium">{customer.visitCount}</span>
+            <span className="truncate pr-5 text-[13px] text-[#596576]" title={customerSchedulingLine(customer)}>{customerSchedulingLine(customer)}</span>
+            <span className="text-[13px] text-muted">{customer.lastVisitAt === undefined ? "—" : formatVisitDate(customer.lastVisitAt)}</span>
+            <span className="text-right text-[13px] font-medium">{customer.visitCount}</span>
           </button>
         ))}
       </div>
@@ -597,21 +597,20 @@ export function CustomersPage({ api, refreshKey }: CustomersPageProps) {
   const selectedDetail = selectedId === undefined ? undefined : details[selectedId];
 
   return (
-    <section className="mx-auto max-w-[1900px]">
-      <header className="mb-4 flex flex-wrap items-center justify-between gap-4 px-1 py-2">
-        <h2 className="text-[32px] font-semibold tracking-[-0.05em]">Customers</h2>
-        <Button className="gap-1.5" onClick={() => setCreating(true)} variant="primary"><PlusIcon className="h-4 w-4" />Add customer</Button>
-      </header>
-
+    <section aria-labelledby="customers-workspace-title" className="mx-auto max-w-[1900px]">
+      <h2 className="sr-only" id="customers-workspace-title">Customers</h2>
       <div className="overflow-hidden rounded-[10px] border border-line bg-white">
-        <div className="flex items-end justify-between gap-4 overflow-x-auto border-b border-line px-4 pt-2">
-          <div aria-label="Customer views" className="flex min-w-max" role="tablist">
-            {views.map((view) => (
-              <button aria-label={`${view.label} ${view.value}`} aria-selected={filter === view.id} className={cn("border-b-2 px-3 py-3 text-xs font-medium", filter === view.id ? "border-landing-coral text-ink" : "border-transparent text-muted hover:text-ink")} key={view.id} onClick={() => setFilter(view.id)} role="tab" type="button">
-                {view.label}<span className={cn("ml-1.5 rounded-full px-1.5 py-0.5 text-[9px]", filter === view.id ? "bg-[#fff0eb] text-[#a74836]" : "bg-[#eef1f4] text-muted")}>{view.value}</span>
-              </button>
-            ))}
+        <div className="flex items-center justify-between gap-3 border-b border-line px-4">
+          <div className="min-w-0 flex-1 overflow-x-auto">
+            <div aria-label="Customer views" className="flex min-w-max" role="tablist">
+              {views.map((view) => (
+                <button aria-label={`${view.label} ${view.value}`} aria-selected={filter === view.id} className={cn("border-b-2 px-3 py-3.5 text-[13px] font-medium", filter === view.id ? "border-landing-coral text-ink" : "border-transparent text-muted hover:text-ink")} key={view.id} onClick={() => setFilter(view.id)} role="tab" type="button">
+                  {view.label}<span className={cn("ml-1.5 rounded-full px-1.5 py-0.5 text-[10px]", filter === view.id ? "bg-[#fff0eb] text-[#a74836]" : "bg-[#eef1f4] text-muted")}>{view.value}</span>
+                </button>
+              ))}
+            </div>
           </div>
+          <Button className="h-8 shrink-0 gap-1.5 px-3 text-xs" onClick={() => setCreating(true)} variant="primary"><PlusIcon className="h-3.5 w-3.5" />Add customer</Button>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
@@ -620,7 +619,7 @@ export function CustomersPage({ api, refreshKey }: CustomersPageProps) {
             <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
             <input className="h-9 w-full rounded-[6px] border border-[#cbd2d9] bg-white pl-9 pr-3 text-sm placeholder:text-[#9fa69f] focus:border-landing-coral focus:outline-none focus:ring-2 focus:ring-landing-coral/15" onChange={(event) => setQuery(event.target.value)} placeholder="Search customers" role="searchbox" value={query} />
           </label>
-          <span className="text-[11px] text-muted">Showing {filteredCustomers.length} of {customers.length}</span>
+          <span className="text-xs text-muted">Showing {filteredCustomers.length} of {customers.length}</span>
         </div>
 
         {loading ? <WorkspaceSkeleton /> : loadError !== undefined ? (

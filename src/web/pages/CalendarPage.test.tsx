@@ -6,6 +6,7 @@ import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { StandbyApiError } from "../api.js";
+import type { GoogleCalendarIntegration } from "../integrations/google-calendar.js";
 import type { CalendarView } from "../lib/dates.js";
 import type { CalendarResponse, StandbyApi, SchedulingSettings } from "../types.js";
 import { CalendarPage } from "./CalendarPage.js";
@@ -146,6 +147,7 @@ function calendar(): CalendarResponse {
 
 function api(): StandbyApi {
   return {
+    getGoogleCalendarOAuthConfig: vi.fn(async () => ({ configured: false as const })),
     getCalendar: vi.fn(async () => calendar()),
     getCalendarRange: vi.fn(async () => calendar()),
     getAvailability: vi.fn(async () => ({
@@ -192,7 +194,13 @@ function api(): StandbyApi {
   };
 }
 
-function Harness({ client = api() }: { client?: StandbyApi }) {
+function Harness({
+  client = api(),
+  googleCalendarIntegration,
+}: {
+  client?: StandbyApi;
+  googleCalendarIntegration?: GoogleCalendarIntegration;
+}) {
   const [view, setView] = useState<CalendarView>("day");
   const [date, setDate] = useState("2026-07-20");
   const [barber, setBarber] = useState("all");
@@ -202,6 +210,7 @@ function Harness({ client = api() }: { client?: StandbyApi }) {
       api={client}
       barberFilter={barber}
       calendar={calendar()}
+      googleCalendarIntegration={googleCalendarIntegration}
       loading={false}
       onAnchorDateChange={setDate}
       onBarberFilterChange={setBarber}
@@ -293,15 +302,73 @@ describe("CalendarPage", () => {
     expect(screen.getByText("Tuesday, July 21")).toBeInTheDocument();
   });
 
-  it("offers calendar sync controls without leaving the workspace", async () => {
+  it("opens Google authorization, verifies Calendar access, and revokes it", async () => {
     const user = userEvent.setup();
-    render(<Harness />);
+    const client = api();
+    client.getGoogleCalendarOAuthConfig = vi.fn(async () => ({
+      configured: true,
+      clientId: "standby.apps.googleusercontent.com",
+    }));
+    const googleCalendarIntegration: GoogleCalendarIntegration = {
+      prepare: vi.fn(async () => undefined),
+      connect: vi.fn(async () => ({
+        accessToken: "short-lived-token",
+        expiresAt: Date.now() + 3_600_000,
+      })),
+      verify: vi.fn(async () => ({
+        calendarCount: 2,
+        primaryCalendarName: "Evan's calendar",
+      })),
+      disconnect: vi.fn(async () => undefined),
+    };
+    render(
+      <Harness
+        client={client}
+        googleCalendarIntegration={googleCalendarIntegration}
+      />,
+    );
 
-    expect(screen.getByText("Connected · two-way sync")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Sync Google Calendar" }));
-    expect(screen.getByText("Google Calendar is up to date")).toBeInTheDocument();
+    const integrations = screen.getByRole("region", { name: "Calendar integrations" });
+    const connectButton = await within(integrations).findByRole("button", { name: "Connect Google Calendar" });
+    await waitFor(() => expect(within(connectButton).getByText("Not connected")).toBeInTheDocument());
+    await user.click(connectButton);
+    expect(await within(integrations).findByText("Connected · 2 calendars")).toBeInTheDocument();
+    expect(googleCalendarIntegration.prepare).toHaveBeenCalledWith("standby.apps.googleusercontent.com");
+    expect(googleCalendarIntegration.connect).toHaveBeenCalledTimes(1);
+    expect(googleCalendarIntegration.verify).toHaveBeenCalledWith("short-lived-token");
+    expect(screen.getByText("Google Calendar connected · Evan's calendar.")).toBeInTheDocument();
+
+    await user.click(within(integrations).getByRole("button", { name: "Check Google Calendar access" }));
+    expect(await screen.findByText("Google Calendar access verified.")).toBeInTheDocument();
+    expect(googleCalendarIntegration.verify).toHaveBeenCalledTimes(2);
+
+    await user.click(within(integrations).getByRole("button", { name: "Disconnect Google Calendar" }));
+    const reconnectedButton = await within(integrations).findByRole("button", { name: "Connect Google Calendar" });
+    expect(within(reconnectedButton).getByText("Not connected")).toBeInTheDocument();
+    expect(googleCalendarIntegration.disconnect).toHaveBeenCalledWith("short-lived-token");
+
     await user.click(screen.getByRole("button", { name: "Connect Outlook Calendar" }));
-    expect(screen.getByRole("button", { name: "Disconnect Outlook Calendar" })).toBeInTheDocument();
+    expect(screen.getByText("Outlook Calendar is not available in this build yet.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Disconnect Outlook Calendar" })).not.toBeInTheDocument();
+  });
+
+  it("never claims Google Calendar is connected without OAuth configuration", async () => {
+    const user = userEvent.setup();
+    const googleCalendarIntegration: GoogleCalendarIntegration = {
+      prepare: vi.fn(async () => undefined),
+      connect: vi.fn(async () => { throw new Error("must not open"); }),
+      verify: vi.fn(async () => ({ calendarCount: 0 })),
+      disconnect: vi.fn(async () => undefined),
+    };
+    render(<Harness googleCalendarIntegration={googleCalendarIntegration} />);
+
+    const integrations = screen.getByRole("region", { name: "Calendar integrations" });
+    expect(await within(integrations).findByText("Setup required")).toBeInTheDocument();
+    await user.click(within(integrations).getByRole("button", { name: "Connect Google Calendar" }));
+    expect(screen.getByText("Google Calendar needs an OAuth client ID before it can connect.")).toBeInTheDocument();
+    expect(googleCalendarIntegration.prepare).not.toHaveBeenCalled();
+    expect(googleCalendarIntegration.connect).not.toHaveBeenCalled();
+    expect(screen.queryByText(/two-way sync/i)).not.toBeInTheDocument();
   });
 
   it("opens focused appointment and refill detail drawers", async () => {

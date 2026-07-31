@@ -16,6 +16,16 @@ describe("loadConfig", () => {
     expect(config.telegramLocalPolling).toBe(false);
     expect(config.telegramApiIp).toBeUndefined();
     expect(config.backboardApiIp).toBeUndefined();
+    expect(config.googleOAuthClientId).toBeUndefined();
+  });
+
+  it("accepts the public Google OAuth web client ID without any client secret", () => {
+    const config = loadConfig({
+      GOOGLE_OAUTH_CLIENT_ID: "standby.apps.googleusercontent.com",
+    });
+
+    expect(config.googleOAuthClientId).toBe("standby.apps.googleusercontent.com");
+    expect("googleOAuthClientSecret" in config).toBe(false);
   });
 
   it("enables explicit local Telegram polling", () => {

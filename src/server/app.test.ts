@@ -26,6 +26,7 @@ const config: AppConfig = {
   backboardApiKey: undefined,
   backboardAssistantId: undefined,
   backboardApiIp: undefined,
+  googleOAuthClientId: undefined,
   voiceAgent: { provider: "disabled", outboundEnabled: false },
 };
 
@@ -84,6 +85,36 @@ describe("Standby Fastify API", () => {
       url: "/api/v1/admin/session",
       payload: { pin: "4242" },
     })).statusCode).toBe(404);
+  });
+
+  it("exposes only the public Google OAuth client configuration", async () => {
+    const unconfigured = await app.inject({
+      method: "GET",
+      url: "/api/v1/integrations/google/config",
+    });
+    expect(unconfigured.statusCode).toBe(200);
+    expect(unconfigured.headers["cache-control"]).toBe("no-store");
+    expect(unconfigured.json()).toEqual({ configured: false });
+
+    const configuredApp = await buildServer({
+      config: { ...config, googleOAuthClientId: "standby.apps.googleusercontent.com" },
+      store,
+      engine,
+      clock: () => now,
+    });
+    try {
+      const response = await configuredApp.inject({
+        method: "GET",
+        url: "/api/v1/integrations/google/config",
+      });
+      expect(response.json()).toEqual({
+        configured: true,
+        clientId: "standby.apps.googleusercontent.com",
+      });
+      expect(response.body).not.toContain("secret");
+    } finally {
+      await configuredApp.close();
+    }
   });
 
   it("reports voice readiness from provider capabilities, not a demo recipient", async () => {
