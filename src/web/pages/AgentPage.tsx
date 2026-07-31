@@ -566,11 +566,8 @@ export function AgentPage({ api, refreshKey }: AgentPageProps) {
 
   return (
     <section className="mx-auto max-w-[1760px]">
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-4 px-1 py-2">
-        <div>
-          <h2 className="text-[32px] font-semibold tracking-[-0.05em]">Agent</h2>
-          <p className="mt-1 text-sm text-muted">Voice and message activity, with every decision in context.</p>
-        </div>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-4 px-1 py-2">
+        <h2 className="text-[32px] font-semibold tracking-[-0.05em]">Agent</h2>
         <SegmentedControl
           label="Agent workspace"
           onChange={setTab}

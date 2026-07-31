@@ -105,6 +105,7 @@ describe("DashboardApp shell", () => {
     for (const destination of ["Calendar", "Agent", "Customers", "Settings"]) {
       expect(screen.getByRole("button", { name: destination })).toBeInTheDocument();
     }
+    expect(screen.getByRole("button", { name: "Settings" })).toHaveTextContent("");
     expect(screen.getByRole("button", { name: "Calendar" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("heading", { name: "Calendar" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Sarah, Signature haircut/ })).toBeInTheDocument();

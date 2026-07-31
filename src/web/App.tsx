@@ -33,7 +33,6 @@ const destinations = [
   { id: "calendar" as const, label: "Calendar", icon: CalendarIcon },
   { id: "agent" as const, label: "Agent", icon: AgentIcon },
   { id: "customers" as const, label: "Customers", icon: CustomersIcon },
-  { id: "settings" as const, label: "Settings", icon: SettingsIcon },
 ];
 
 function nextOperationalDate(): string {
@@ -118,7 +117,7 @@ export function DashboardApp({
   return (
     <div className="product-page min-h-screen font-landing-sans text-ink">
       <header className="sticky top-0 z-30 border-b border-[#e8eaed] bg-white">
-        <div className="mx-auto grid h-16 max-w-[1900px] grid-cols-[1fr_auto_1fr] items-center px-3 sm:px-5 max-[720px]:grid-cols-[auto_1fr]">
+        <div className="mx-auto grid h-16 max-w-[1900px] grid-cols-[1fr_auto_1fr] items-center px-3 sm:px-5">
           <a className="justify-self-start" href="/">
             <h1
               aria-label="Standby"
@@ -141,7 +140,7 @@ export function DashboardApp({
           </a>
           <nav
             aria-label="Primary"
-            className="flex h-full items-center gap-1 max-[720px]:justify-self-end"
+            className="flex h-full items-center gap-1 justify-self-center"
           >
             {destinations.map((destination) => {
               const Icon = destination.icon;
@@ -164,12 +163,29 @@ export function DashboardApp({
               );
             })}
           </nav>
-          <a
-            className="justify-self-end rounded-[8px] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted transition-colors hover:bg-[#f1f3f4] hover:text-ink max-[720px]:hidden"
-            href="/"
-          >
-            View site
-          </a>
+          <div className="flex items-center gap-1 justify-self-end">
+            <a
+              className="rounded-[8px] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted transition-colors hover:bg-[#f1f3f4] hover:text-ink max-[720px]:hidden"
+              href="/"
+            >
+              View site
+            </a>
+            <button
+              aria-current={page === "settings" ? "page" : undefined}
+              aria-label="Settings"
+              className={cn(
+                "grid h-10 w-10 place-items-center rounded-[8px] transition-colors",
+                page === "settings"
+                  ? "bg-[#fff1ed] text-[#a64533]"
+                  : "text-muted hover:bg-[#f1f3f4] hover:text-ink",
+              )}
+              onClick={() => navigateTo("settings")}
+              title="Settings"
+              type="button"
+            >
+              <SettingsIcon className="h-[18px] w-[18px]" />
+            </button>
+          </div>
         </div>
       </header>
       {error === undefined ? null : (

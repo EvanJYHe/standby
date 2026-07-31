@@ -253,6 +253,8 @@ describe("CustomersPage", () => {
     render(<CustomersPage api={api()} refreshKey={0} />);
 
     expect(await screen.findByRole("heading", { name: "Customers" })).toBeInTheDocument();
+    expect(screen.queryByText(/records$/)).not.toBeInTheDocument();
+    expect(screen.queryByText("The people Standby can book, move, or call when a chair opens.")).not.toBeInTheDocument();
     const allCustomers = screen.getByRole("tab", { name: /All customers\s*4/ });
     expect(allCustomers).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Booked\s*1/ })).toBeInTheDocument();

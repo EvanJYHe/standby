@@ -90,10 +90,7 @@ export function SettingsPage({ api, refreshKey, onReset }: SettingsPageProps) {
   return (
     <section className="mx-auto max-w-[1760px]">
       <div className="mb-4 flex items-start justify-between gap-4 px-1 py-2">
-        <div>
-          <h2 className="text-[32px] font-semibold tracking-[-0.05em]">Settings</h2>
-          <p className="mt-1 text-sm text-muted">Shape how Standby detects openings, calls customers, and commits changes.</p>
-        </div>
+        <h2 className="text-[32px] font-semibold tracking-[-0.05em]">Settings</h2>
         {status === undefined ? null : <span className="mt-1 font-mono text-[10px] text-muted">{status}</span>}
       </div>
       <div className="mx-auto max-w-5xl space-y-5">

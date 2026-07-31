@@ -598,11 +598,8 @@ export function CustomersPage({ api, refreshKey }: CustomersPageProps) {
 
   return (
     <section className="mx-auto max-w-[1900px]">
-      <header className="mb-4 flex flex-wrap items-end justify-between gap-4 px-1 py-2">
-        <div>
-          <div className="flex items-baseline gap-2.5"><h2 className="text-[32px] font-semibold tracking-[-0.05em]">Customers</h2>{loading ? null : <span className="text-sm text-muted">{customers.length} records</span>}</div>
-          <p className="mt-1 text-sm text-muted">The people Standby can book, move, or call when a chair opens.</p>
-        </div>
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-4 px-1 py-2">
+        <h2 className="text-[32px] font-semibold tracking-[-0.05em]">Customers</h2>
         <Button className="gap-1.5" onClick={() => setCreating(true)} variant="primary"><PlusIcon className="h-4 w-4" />Add customer</Button>
       </header>
 

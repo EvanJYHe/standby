@@ -226,6 +226,7 @@ afterEach(cleanup);
 describe("AgentPage", () => {
   it("renders real conversations in the locked list, ledger, and context structure", async () => {
     const { container } = render(<AgentPage api={api()} refreshKey={0} />);
+    expect(screen.queryByText("Voice and message activity, with every decision in context.")).not.toBeInTheDocument();
 
     expect(await screen.findByRole("heading", { name: "Conversations" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Conversation" })).toBeInTheDocument();
