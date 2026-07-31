@@ -698,9 +698,6 @@ export function LandingPage() {
                   </p>
                 </div>
                 <nav aria-label="Standby links" className="flex items-center gap-1 max-[720px]:-ml-3">
-                  <a className={footerLinkClass} href="/app">
-                    Open product
-                  </a>
                   <a
                     className={footerLinkClass}
                     href="https://github.com/EvanJYHe/standby"
