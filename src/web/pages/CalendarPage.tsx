@@ -64,9 +64,9 @@ const barberPalette: Record<string, {
   dot: string;
   text: string;
 }> = {
-  jeremy: { event: "#fce8e6", dot: "#d96857", text: "#6d2f28" },
-  maya: { event: "#e8f0fe", dot: "#4c74a8", text: "#294f7e" },
-  devon: { event: "#e6f4ea", dot: "#4f7b5c", text: "#315d3d" },
+  jeremy: { event: "#c4513d", dot: "#c4513d", text: "#ffffff" },
+  maya: { event: "#4667a7", dot: "#4667a7", text: "#ffffff" },
+  devon: { event: "#367a52", dot: "#367a52", text: "#ffffff" },
 };
 
 function barberColor(barberId: string) {
@@ -112,7 +112,7 @@ function initialScrollTop(_starts: string[], _timezone: string): number {
 function cardStyle(startAt: string, endAt: string, timezone: string, startMinutes: number): CSSProperties {
   const top = ((minuteOfDay(startAt, timezone) - startMinutes) / 60) * pixelsPerHour;
   const duration = durationMinutes(startAt, endAt);
-  const height = Math.max(32, (duration / 60) * pixelsPerHour - 4);
+  const height = Math.max(24, (duration / 60) * pixelsPerHour - 4);
   return {
     "--card-top": `${top + 2}px`,
     "--card-height": `${height}px`,
@@ -123,40 +123,34 @@ function HourLines({ startHour, endHour }: { startHour: number; endHour: number 
   return (
     <>
       {Array.from({ length: endHour - startHour + 1 }, (_, index) => (
-        <span aria-hidden="true" key={index}>
-          <span
-            className="pointer-events-none absolute inset-x-0 border-t border-[#e8eaed]"
-            style={{ top: index * pixelsPerHour }}
-          />
-          {index === endHour - startHour ? null : (
-            <span
-              className="pointer-events-none absolute inset-x-0 border-t border-dashed border-[#f1f3f4]"
-              style={{ top: index * pixelsPerHour + pixelsPerHour / 2 }}
-            />
-          )}
-        </span>
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 border-t border-[#e8eaed]"
+          key={index}
+          style={{ top: index * pixelsPerHour }}
+        />
       ))}
     </>
   );
 }
 
-function AppointmentCard({ appointment, timezone, onOpen, compact = false, style }: {
+function AppointmentCard({ appointment, timezone, onOpen, style }: {
   appointment: CalendarAppointment;
   timezone: string;
   onOpen: (rect: DOMRect) => void;
-  compact?: boolean;
   style: CSSProperties;
 }) {
-  const density = compact || durationMinutes(appointment.startAt, appointment.endAt) < 45
-    ? "compact"
-    : "full";
+  const duration = durationMinutes(appointment.startAt, appointment.endAt);
+  const density = duration < 45 ? "compact" : "standard";
   const color = barberColor(appointment.barberId);
   return (
     <button
-      aria-label={`${appointment.customerName}, ${appointment.serviceName}, ${timeLabel(appointment.startAt, timezone)}`}
+      aria-label={`${appointment.customerName}, ${appointment.serviceName}, ${timeLabel(appointment.startAt, timezone)} to ${timeLabel(appointment.endAt, timezone)}, ${appointment.barberName}`}
       className={cn(
-        "calendar-card z-10 overflow-hidden rounded-[6px] border-0 text-left transition-[filter] hover:brightness-[0.98] focus-visible:z-30",
-        density === "compact" ? "px-2 py-1 text-[11px] leading-4" : "px-2.5 py-1.5 text-[12px] leading-[1.35]",
+        "calendar-card z-10 overflow-hidden rounded-[6px] border-0 text-left transition-[filter] hover:brightness-[0.94] focus-visible:z-30",
+        density === "compact"
+          ? "flex items-center gap-1.5 px-2 text-[11px] leading-none"
+          : "px-2 py-1 text-[11px] leading-[14px]",
       )}
       data-density={density}
       data-visual="solid"
@@ -170,14 +164,13 @@ function AppointmentCard({ appointment, timezone, onOpen, compact = false, style
     >
       {density === "compact" ? (
         <>
-          <strong className="block truncate font-semibold">{appointment.customerName} · {appointment.serviceName}</strong>
-          <span className="block truncate text-[10px] opacity-75">{timeLabel(appointment.startAt, timezone)} · {appointment.barberName}</span>
+          <span className="shrink-0 font-medium opacity-80">{timeLabel(appointment.startAt, timezone)}</span>
+          <strong className="min-w-0 truncate font-semibold">{appointment.customerName} · {appointment.serviceName}</strong>
         </>
       ) : (
         <>
           <strong className="block truncate font-semibold">{appointment.customerName} · {appointment.serviceName}</strong>
-          <span className="mt-0.5 block truncate opacity-75">{timeLabel(appointment.startAt, timezone)}–{timeLabel(appointment.endAt, timezone)}</span>
-          <span className="mt-0.5 block truncate text-[10px] opacity-70">{appointment.barberName}</span>
+          <span className="block truncate opacity-80">{timeLabel(appointment.startAt, timezone)}–{timeLabel(appointment.endAt, timezone)}</span>
         </>
       )}
     </button>
@@ -190,17 +183,30 @@ function RefillCard({ refill, timezone, onOpen, style }: {
   onOpen: () => void;
   style: CSSProperties;
 }) {
+  const compact = durationMinutes(refill.slotStartAt, refill.slotEndAt) < 45;
   return (
     <button
       aria-label={`${refill.customerState} Open refill timeline`}
-      className="calendar-card z-20 overflow-hidden rounded-[6px] border border-dashed border-[#e78b78] bg-[#fff3ef] px-2.5 py-1.5 text-left text-[12px] text-ink transition-colors hover:bg-[#ffebe5]"
+      className={cn(
+        "calendar-card z-20 overflow-hidden rounded-[6px] border-0 bg-[#e37400] text-left text-[11px] text-white transition-[filter] hover:brightness-[0.94]",
+        compact ? "flex items-center gap-1.5 px-2 leading-none" : "px-2 py-1 leading-[14px]",
+      )}
+      data-density={compact ? "compact" : "standard"}
       onClick={onOpen}
       style={style}
       type="button"
     >
-      <span className="font-semibold text-[#a74836]">Open chair</span>
-      <strong className="mt-1 block truncate font-semibold text-ink">{refill.customerState.replace(/\.$/, "")}</strong>
-      <span className="mt-0.5 block truncate text-muted">{timeLabel(refill.slotStartAt, timezone)} · {refill.barberName}</span>
+      {compact ? (
+        <>
+          <span className="shrink-0 font-medium opacity-80">{timeLabel(refill.slotStartAt, timezone)}</span>
+          <strong className="min-w-0 truncate font-semibold">Open chair · {refill.barberName}</strong>
+        </>
+      ) : (
+        <>
+          <strong className="block truncate font-semibold">Open chair · {refill.barberName}</strong>
+          <span className="block truncate opacity-80">{timeLabel(refill.slotStartAt, timezone)}–{timeLabel(refill.slotEndAt, timezone)}</span>
+        </>
+      )}
     </button>
   );
 }
@@ -417,7 +423,6 @@ function WeekCalendar({ calendar, dates, barberFilter, onAppointment, onRefill }
                   return (
                     <AppointmentCard
                       appointment={appointment}
-                      compact
                       key={appointment.id}
                       onOpen={(rect) => onAppointment(appointment, rect)}
                       style={{
@@ -501,7 +506,7 @@ function MonthCalendar({ calendar, anchorDate, dates, barberFilter, onSelectDate
                   const color = barberColor(appointment.barberId);
                   return (
                     <span
-                      className="block truncate rounded-[4px] px-1.5 py-1 text-[10px] font-medium"
+                      className="block truncate rounded-[4px] px-1.5 py-1 text-[11px] font-medium"
                       key={appointment.id}
                       style={{ backgroundColor: color.event, color: color.text }}
                     >
@@ -601,12 +606,6 @@ function popoverPosition(rect: DOMRect): CSSProperties {
   return { left, top, width: POPOVER_WIDTH };
 }
 
-function barberTone(barberId: string): string {
-  if (barberId === "maya") return "#53667f";
-  if (barberId === "devon") return "#8d7165";
-  return "#f36f56";
-}
-
 function AppointmentPopover({ appointment, timezone, anchorRect, api, onClose, onEdit, onMutated }: {
   appointment: CalendarAppointment;
   timezone: string;
@@ -661,7 +660,7 @@ function AppointmentPopover({ appointment, timezone, anchorRect, api, onClose, o
           <IconButton aria-label="Close Appointment details" onClick={onClose}><XIcon /></IconButton>
         </div>
         <div className="mt-0.5 flex gap-3">
-          <span className="mt-1.5 h-3.5 w-3.5 shrink-0 rounded-[4px]" style={{ backgroundColor: barberTone(appointment.barberId) }} />
+          <span className="mt-1.5 h-3.5 w-3.5 shrink-0 rounded-[4px]" style={{ backgroundColor: barberColor(appointment.barberId).event }} />
           <div className="min-w-0">
             <h3 className="text-base font-semibold leading-6 tracking-[-0.01em]">{appointment.customerName}</h3>
             <p className="text-sm text-muted">{appointment.serviceName}</p>
@@ -901,35 +900,34 @@ function CalendarIntegrations({
             : "Loading sign-in…";
 
   return (
-    <section className="mt-6 border-t border-[#e8eaed] pt-5" aria-label="Calendar integrations">
-      <h3 className="px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">Integrations</h3>
-      <div className="mt-2 space-y-1">
-        <div className="flex items-center rounded-[8px] transition-colors hover:bg-[#f1f3f4]">
+    <section aria-label="Calendar integrations">
+      <div className="space-y-2">
+        <div className="flex items-center rounded-[10px] border border-[#e2e5e9] bg-white transition-colors hover:bg-[#f8f9fa]">
           <button
             aria-label={connection === undefined ? "Connect Google Calendar" : "Check Google Calendar access"}
-            className="flex min-w-0 flex-1 items-center gap-3 px-2 py-2 text-left disabled:cursor-wait"
+            className="flex min-w-0 flex-1 items-center gap-3 px-3.5 py-3 text-left disabled:cursor-wait"
             disabled={googleBusy}
             onClick={onGoogleAction}
             type="button"
           >
-            <GoogleCalendarIcon className="h-5 w-5 shrink-0" />
+            <GoogleCalendarIcon className="h-6 w-6 shrink-0" />
             <span className="min-w-0 flex-1">
-              <strong className="block truncate text-[12px] font-medium text-ink">Google Calendar</strong>
+              <strong className="block truncate text-sm font-semibold text-ink">Google Calendar</strong>
               <span className={cn(
-                "block truncate text-[10px]",
+                "mt-0.5 block truncate text-xs",
                 connection === undefined ? "text-muted" : "text-[#188038]",
               )}>
                 {googleStatus}
               </span>
             </span>
             {googleBusy || connection !== undefined
-              ? <SyncIcon className={cn("h-3.5 w-3.5 text-muted", googleBusy && "animate-spin")} />
-              : <span className="text-[10px] font-semibold text-[#1a73e8]">Add</span>}
+              ? <SyncIcon className={cn("h-4 w-4 text-muted", googleBusy && "animate-spin")} />
+              : <span className="text-xs font-semibold text-[#1a73e8]">Add</span>}
           </button>
           {connection === undefined ? null : (
             <button
               aria-label="Disconnect Google Calendar"
-              className="mr-1 rounded px-1.5 py-1 text-[9px] font-medium text-muted hover:bg-white hover:text-ink"
+              className="mr-2 rounded px-2 py-1 text-xs font-medium text-muted hover:bg-white hover:text-ink"
               disabled={googleBusy}
               onClick={onGoogleDisconnect}
               type="button"
@@ -940,16 +938,16 @@ function CalendarIntegrations({
         </div>
         <button
           aria-label="Connect Outlook Calendar"
-          className="flex w-full items-center gap-3 rounded-[8px] px-2 py-2 text-left transition-colors hover:bg-[#f1f3f4]"
+          className="flex w-full items-center gap-3 rounded-[10px] border border-[#e2e5e9] bg-white px-3.5 py-3 text-left transition-colors hover:bg-[#f8f9fa]"
           onClick={() => onStatus("Outlook Calendar is not available in this build yet.")}
           type="button"
         >
-          <OutlookIcon className="h-5 w-5 shrink-0" />
+          <OutlookIcon className="h-6 w-6 shrink-0" />
           <span className="min-w-0 flex-1">
-            <strong className="block truncate text-[12px] font-medium text-ink">Outlook</strong>
-            <span className="block truncate text-[10px] text-muted">Not connected</span>
+            <strong className="block truncate text-sm font-semibold text-ink">Outlook</strong>
+            <span className="mt-0.5 block truncate text-xs text-muted">Not connected</span>
           </span>
-          <span className="text-[10px] font-semibold text-muted">Soon</span>
+          <span className="text-xs font-semibold text-muted">Soon</span>
         </button>
       </div>
     </section>
@@ -978,6 +976,7 @@ export function CalendarPage({
   const [googleReady, setGoogleReady] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [syncNotice, setSyncNotice] = useState("");
+  const [integrationsOpen, setIntegrationsOpen] = useState(false);
   const range = useMemo(() => periodRange(anchorDate, view), [anchorDate, view]);
 
   useEffect(() => {
@@ -1095,16 +1094,15 @@ export function CalendarPage({
           </div>
           <div className="flex items-center gap-2">
             <Button
-              aria-label={googleConnection === undefined
-                ? "Connect Google Calendar from toolbar"
-                : "Check Google Calendar access from toolbar"}
-              className="hidden h-9 px-3 sm:inline-flex"
-              disabled={googleBusy}
-              onClick={connectOrVerifyGoogleCalendar}
+              aria-expanded={integrationsOpen}
+              aria-haspopup="dialog"
+              aria-label="Calendar integrations"
+              className="h-9 px-2.5 sm:px-3"
+              onClick={() => setIntegrationsOpen(true)}
               variant="secondary"
             >
-              <SyncIcon className={cn("h-4 w-4", googleBusy && "animate-spin")} />
-              {googleConnection === undefined ? "Connect" : "Check access"}
+              <GoogleCalendarIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">Calendars</span>
             </Button>
             <SegmentedControl
               label="Calendar view"
@@ -1160,18 +1158,6 @@ export function CalendarPage({
               ))}
             </div>
           </div>
-          <CalendarIntegrations
-            configuration={googleConfiguration}
-            connection={googleConnection}
-            googleBusy={googleBusy}
-            googleReady={googleReady}
-            onGoogleAction={connectOrVerifyGoogleCalendar}
-            onGoogleDisconnect={disconnectGoogleCalendar}
-            onStatus={setSyncNotice}
-          />
-          {syncNotice === "" ? null : (
-            <p aria-live="polite" className="mt-4 px-1 text-[10px] leading-4 text-muted">{syncNotice}</p>
-          )}
         </aside>
         <div className={cn("min-h-0 min-w-0 overflow-x-auto", view === "month" ? "overflow-y-auto bg-white p-3" : "") }>
           {calendar === undefined ? (
@@ -1238,6 +1224,22 @@ export function CalendarPage({
             : {})}
         />
       )}
+      {integrationsOpen ? (
+        <Modal onClose={() => setIntegrationsOpen(false)} title="Calendar integrations">
+          <CalendarIntegrations
+            configuration={googleConfiguration}
+            connection={googleConnection}
+            googleBusy={googleBusy}
+            googleReady={googleReady}
+            onGoogleAction={connectOrVerifyGoogleCalendar}
+            onGoogleDisconnect={disconnectGoogleCalendar}
+            onStatus={setSyncNotice}
+          />
+          {syncNotice === "" ? null : (
+            <p aria-live="polite" className="mt-4 rounded-[8px] bg-[#f6f7f8] px-3 py-2 text-xs leading-5 text-muted">{syncNotice}</p>
+          )}
+        </Modal>
+      ) : null}
     </section>
   );
 }

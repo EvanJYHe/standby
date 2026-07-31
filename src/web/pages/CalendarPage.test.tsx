@@ -271,18 +271,24 @@ describe("CalendarPage", () => {
     expect(within(calendarRegion).getByText("8 AM")).not.toHaveClass("-translate-y-1/2");
     expect(within(calendarRegion).getByText("8 PM")).toBeInTheDocument();
     expect(within(calendarRegion).getByTestId("calendar-scroll-region")).toHaveClass("overflow-y-auto");
+    expect(calendarRegion.querySelector(".border-dashed")).toBeNull();
 
     const shortAppointment = screen.getByRole("button", { name: /Eli, Beard sculpt/ });
     expect(shortAppointment).toHaveAttribute("data-density", "compact");
     expect(shortAppointment).toHaveAttribute("data-visual", "solid");
+    expect(shortAppointment.style.getPropertyValue("--card-height")).toBe("28px");
+    expect(shortAppointment).toHaveAccessibleName("Eli, Beard sculpt, 3:00 PM to 3:30 PM, Devon");
+    expect(within(shortAppointment).getByText("3:00 PM")).toBeInTheDocument();
     expect(within(shortAppointment).getByText("Eli · Beard sculpt")).toBeInTheDocument();
-    expect(within(shortAppointment).getByText("3:00 PM · Devon")).toBeInTheDocument();
+    expect(within(shortAppointment).queryByText("Devon")).not.toBeInTheDocument();
 
     const fullAppointment = screen.getByRole("button", { name: /Sarah, Signature haircut/ });
+    expect(fullAppointment).toHaveAttribute("data-density", "standard");
+    expect(fullAppointment.style.getPropertyValue("--card-height")).toBe("60px");
     expect(fullAppointment).not.toHaveClass("border-l-[3px]");
     expect(fullAppointment.style.borderLeftColor).toBe("");
     expect(within(fullAppointment).getByText("6:00 PM–7:00 PM")).toBeInTheDocument();
-    expect(within(fullAppointment).getByText("Jeremy")).toBeInTheDocument();
+    expect(within(fullAppointment).queryByText("Jeremy")).not.toBeInTheDocument();
   });
 
   it("switches among day, week, and month and opens a month date in day view", async () => {
@@ -328,7 +334,15 @@ describe("CalendarPage", () => {
       />,
     );
 
-    const integrations = screen.getByRole("region", { name: "Calendar integrations" });
+    const integrationTrigger = screen.getByRole("button", { name: "Calendar integrations" });
+    expect(integrationTrigger).toHaveAttribute("aria-haspopup", "dialog");
+    expect(integrationTrigger).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("region", { name: "Calendar integrations" })).not.toBeInTheDocument();
+    expect(googleCalendarIntegration.connect).not.toHaveBeenCalled();
+    await user.click(integrationTrigger);
+    expect(integrationTrigger).toHaveAttribute("aria-expanded", "true");
+    const dialog = screen.getByRole("dialog", { name: "Calendar integrations" });
+    const integrations = within(dialog).getByRole("region", { name: "Calendar integrations" });
     const connectButton = await within(integrations).findByRole("button", { name: "Connect Google Calendar" });
     await waitFor(() => expect(within(connectButton).getByText("Not connected")).toBeInTheDocument());
     await user.click(connectButton);
@@ -347,8 +361,8 @@ describe("CalendarPage", () => {
     expect(within(reconnectedButton).getByText("Not connected")).toBeInTheDocument();
     expect(googleCalendarIntegration.disconnect).toHaveBeenCalledWith("short-lived-token");
 
-    await user.click(screen.getByRole("button", { name: "Connect Outlook Calendar" }));
-    expect(screen.getByText("Outlook Calendar is not available in this build yet.")).toBeInTheDocument();
+    await user.click(within(integrations).getByRole("button", { name: "Connect Outlook Calendar" }));
+    expect(within(dialog).getByText("Outlook Calendar is not available in this build yet.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Disconnect Outlook Calendar" })).not.toBeInTheDocument();
   });
 
@@ -362,10 +376,12 @@ describe("CalendarPage", () => {
     };
     render(<Harness googleCalendarIntegration={googleCalendarIntegration} />);
 
-    const integrations = screen.getByRole("region", { name: "Calendar integrations" });
+    await user.click(screen.getByRole("button", { name: "Calendar integrations" }));
+    const dialog = screen.getByRole("dialog", { name: "Calendar integrations" });
+    const integrations = within(dialog).getByRole("region", { name: "Calendar integrations" });
     expect(await within(integrations).findByText("Setup required")).toBeInTheDocument();
     await user.click(within(integrations).getByRole("button", { name: "Connect Google Calendar" }));
-    expect(screen.getByText("Google Calendar needs an OAuth client ID before it can connect.")).toBeInTheDocument();
+    expect(within(dialog).getByText("Google Calendar needs an OAuth client ID before it can connect.")).toBeInTheDocument();
     expect(googleCalendarIntegration.prepare).not.toHaveBeenCalled();
     expect(googleCalendarIntegration.connect).not.toHaveBeenCalled();
     expect(screen.queryByText(/two-way sync/i)).not.toBeInTheDocument();
