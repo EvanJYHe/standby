@@ -15,7 +15,7 @@ const config: AppConfig = {
   publicBaseUrl: "http://localhost:3000",
   timezone: "America/Toronto",
   demoMode: true,
-  voiceActorSecret: "test-voice-actor-secret-with-enough-length",
+  outreachWorkerEnabled: false,
   dataStore: "memory",
   mongoUri: undefined,
   mongoDatabase: "standby_test",
@@ -26,11 +26,7 @@ const config: AppConfig = {
   backboardApiKey: undefined,
   backboardAssistantId: undefined,
   backboardApiIp: undefined,
-  elevenLabsApiKey: undefined,
-  elevenLabsAgentId: undefined,
-  elevenLabsPhoneNumberId: undefined,
-  elevenLabsWebhookSecret: undefined,
-  sarahPhone: "+14165550101",
+  voiceAgent: { provider: "disabled", outboundEnabled: false },
 };
 
 describe("Standby Fastify API", () => {
@@ -42,10 +38,10 @@ describe("Standby Fastify API", () => {
     store = new InMemoryStore(createDemoState({
       now,
       timezone: config.timezone,
-      preservedIdentities: {
-        joshTelegramChatId: "1001",
-        alexTelegramChatId: "2002",
-        sarahPhone: config.sarahPhone!,
+      contactOverrides: {
+        josh: { telegramChatId: "1001" },
+        alex: { telegramChatId: "2002" },
+        sarah: { phone: "+14165550101" },
       },
     }));
     engine = new StandbyEngine(store);
@@ -67,7 +63,7 @@ describe("Standby Fastify API", () => {
         mongodb: "memory",
         telegram: "unconfigured",
         backboard: "unconfigured",
-        elevenlabs: "unconfigured",
+        elevenlabs: "disabled",
       },
     });
     expect(response.body).not.toContain("test-voice-actor-secret");
@@ -90,14 +86,21 @@ describe("Standby Fastify API", () => {
     })).statusCode).toBe(404);
   });
 
-  it("reports ElevenLabs ready only when the outbound destination is configured", async () => {
+  it("reports voice readiness from provider capabilities, not a demo recipient", async () => {
+    const configuredVoice = {
+      provider: "elevenlabs" as const,
+      outboundEnabled: false,
+      apiKey: "elevenlabs-key",
+      agentId: "agent-1",
+      phoneNumberId: "phone-1",
+      webhookSecret: "voice-webhook-secret-that-is-long-enough",
+      actorTokenSecret: "voice-actor-secret-that-is-at-least-32-characters",
+      baseUrl: "https://api.elevenlabs.io",
+      requestTimeoutMs: 20_000,
+    };
     const voiceConfig: AppConfig = {
       ...config,
-      elevenLabsApiKey: "elevenlabs-key",
-      elevenLabsAgentId: "agent-1",
-      elevenLabsPhoneNumberId: "phone-1",
-      elevenLabsWebhookSecret: "voice-webhook-secret-that-is-long-enough",
-      sarahPhone: undefined,
+      voiceAgent: configuredVoice,
     };
     const healthFor = async (candidateConfig: AppConfig) => {
       const candidateStore = new InMemoryStore(createDemoState({
@@ -118,9 +121,12 @@ describe("Standby Fastify API", () => {
     };
 
     await expect(healthFor(voiceConfig)).resolves.toMatchObject({
-      providers: { elevenlabs: "unconfigured" },
+      providers: { elevenlabs: "inbound_only" },
     });
-    await expect(healthFor({ ...voiceConfig, sarahPhone: "+14165550101" })).resolves.toMatchObject({
+    await expect(healthFor({
+      ...voiceConfig,
+      voiceAgent: { ...configuredVoice, outboundEnabled: true },
+    })).resolves.toMatchObject({
       providers: { elevenlabs: "configured" },
     });
   });

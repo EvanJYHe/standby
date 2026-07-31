@@ -7,18 +7,22 @@ import { InMemoryStore } from "../../domain/store.js";
 import { createDemoState } from "../seed.js";
 import { SchedulingToolbox } from "./scheduling-tools.js";
 import {
-  createVoiceActorToken,
   ElevenLabsOutboundClient,
   ElevenLabsWebhookService,
-  verifyVoiceActorToken,
 } from "./elevenlabs.js";
+import { createVoiceActorToken, verifyVoiceActorToken } from "./voice-session.js";
 
 const now = "2026-07-18T16:00:00.000Z";
 const timezone = "America/Toronto";
 const secret = "voice-webhook-secret-that-is-long-enough";
+const actorTokenSecret = "voice-actor-secret-that-is-at-least-32-characters";
 
-function signedWebhook(body: string, webhookSecret: string): string {
-  const timestamp = Math.floor(Date.now() / 1000).toString();
+function signedWebhook(
+  body: string,
+  webhookSecret: string,
+  timestampSeconds = Math.floor(Date.parse(now) / 1000),
+): string {
+  const timestamp = timestampSeconds.toString();
   const digest = createHmac("sha256", webhookSecret)
     .update(`${timestamp}.${body}`)
     .digest("hex");
@@ -49,10 +53,10 @@ describe("ElevenLabsWebhookService", () => {
     const engine = new StandbyEngine(store);
     const service = new ElevenLabsWebhookService({
       store,
-      engine,
       toolbox: new SchedulingToolbox(store, engine, () => now),
       agentId: "agent-1",
       webhookSecret: secret,
+      actorTokenSecret,
       clock: () => now,
     });
 
@@ -63,6 +67,16 @@ describe("ElevenLabsWebhookService", () => {
       call_sid: "guest-call",
     });
     const authorization = `Bearer ${context.dynamic_variables.secret__actor_token}`;
+    expect(() => verifyVoiceActorToken(
+      context.dynamic_variables.secret__actor_token,
+      secret,
+      now,
+    )).toThrow("Invalid voice actor token");
+    expect(verifyVoiceActorToken(
+      context.dynamic_variables.secret__actor_token,
+      actorTokenSecret,
+      now,
+    )).toMatchObject({ callId: "guest-call" });
 
     await expect(service.executeTool("get_shop_info", { topic: "hours" }, authorization))
       .resolves.toMatchObject({ name: "Standby", hours: expect.any(String) });
@@ -74,16 +88,16 @@ describe("ElevenLabsWebhookService", () => {
     const store = new InMemoryStore(createDemoState({
       now,
       timezone,
-      preservedIdentities: { sarahPhone: "+14165550101" },
+      contactOverrides: { sarah: { phone: "+14165550101" } },
     }));
     const engine = new StandbyEngine(store);
     const toolbox = new SchedulingToolbox(store, engine, () => now);
     const service = new ElevenLabsWebhookService({
       store,
-      engine,
       toolbox,
       agentId: "agent-1",
       webhookSecret: secret,
+      actorTokenSecret,
       clock: () => now,
     });
 
@@ -122,15 +136,15 @@ describe("ElevenLabsWebhookService", () => {
 
     await expect(service.executeTool("get_my_appointments", {}, token))
       .resolves.toMatchObject({
-        appointments: [expect.objectContaining({ id: "sarah-appt" })],
+        appointments: expect.arrayContaining([expect.objectContaining({ id: "sarah-appt" })]),
       });
   });
 
-  it("verifies HMAC post-call failures, deduplicates them, and advances an active offer", async () => {
+  it("verifies HMAC post-call failures, deduplicates them, and releases failed outreach", async () => {
     const initial = createDemoState({
       now,
       timezone,
-      preservedIdentities: { sarahPhone: "+14165550101" },
+      contactOverrides: { sarah: { phone: "+14165550101" } },
     });
     initial.refillJobs.push({
       id: "job-1",
@@ -170,10 +184,10 @@ describe("ElevenLabsWebhookService", () => {
     const engine = new StandbyEngine(store);
     const service = new ElevenLabsWebhookService({
       store,
-      engine,
       toolbox: new SchedulingToolbox(store, engine, () => now),
       agentId: "agent-1",
       webhookSecret: secret,
+      actorTokenSecret,
       clock: () => now,
     });
     const event = JSON.stringify({
@@ -194,12 +208,14 @@ describe("ElevenLabsWebhookService", () => {
     expect(first).toEqual({ status: "processed" });
     expect(duplicate).toEqual({ status: "duplicate" });
     const snapshot = await store.read();
-    expect(snapshot.offers.find((offer) => offer.id === "offer-sarah")?.status).toBe("declined");
-    expect(snapshot.refillJobs[0]).toMatchObject({ status: "pending" });
+    expect(snapshot.offers.find((offer) => offer.id === "offer-sarah")?.status).toBe("delivery_failed");
+    expect(snapshot.refillJobs.find((job) => job.id === "job-1"))
+      .toMatchObject({ status: "pending", retryAt: now });
+    expect(snapshot.refillJobs.find((job) => job.id === "job-1")?.currentOfferId).toBeUndefined();
     expect(snapshot.conversations).toContainEqual(expect.objectContaining({
       customerId: "sarah",
       channel: "voice",
-      providerConversationId: "conversation-1",
+      providerConversationId: "elevenlabs:conversation-1",
       state: "failed",
     }));
     expect(snapshot.conversationEvents).toContainEqual(expect.objectContaining({
@@ -211,21 +227,25 @@ describe("ElevenLabsWebhookService", () => {
     }));
     expect(JSON.stringify(snapshot.conversationEvents)).not.toContain("CallStatus");
     await expect(service.handlePostCall(event, "t=bad,v0=bad")).rejects.toThrow("Invalid ElevenLabs signature");
+    await expect(service.handlePostCall(
+      event,
+      signedWebhook(event, secret, Math.floor(Date.parse(now) / 1000) + 60 * 60),
+    )).rejects.toThrow("Invalid ElevenLabs signature");
   });
 
   it("persists documented transcript turns without audio or raw webhook metadata", async () => {
     const store = new InMemoryStore(createDemoState({
       now,
       timezone,
-      preservedIdentities: { sarahPhone: "+14165550101" },
+      contactOverrides: { sarah: { phone: "+14165550101" } },
     }));
     const engine = new StandbyEngine(store);
     const service = new ElevenLabsWebhookService({
       store,
-      engine,
       toolbox: new SchedulingToolbox(store, engine, () => now),
       agentId: "agent-1",
       webhookSecret: secret,
+      actorTokenSecret,
       clock: () => now,
     });
     const event = JSON.stringify({
@@ -266,15 +286,20 @@ describe("ElevenLabsWebhookService", () => {
     expect(snapshot.conversations).toContainEqual(expect.objectContaining({
       customerId: "sarah",
       channel: "voice",
-      providerConversationId: "conversation-transcript",
+      providerConversationId: "elevenlabs:conversation-transcript",
       state: "completed",
     }));
-    expect(snapshot.conversationEvents.map((turn) => ({
+    const conversation = snapshot.conversations.find(
+      (entry) => entry.providerConversationId === "elevenlabs:conversation-transcript",
+    );
+    expect(snapshot.conversationEvents
+      .filter((turn) => turn.conversationId === conversation?.id)
+      .map((turn) => ({
       text: turn.text,
       direction: turn.direction,
       speaker: turn.speaker,
       metadata: turn.metadata,
-    }))).toEqual([
+      }))).toEqual([
       {
         text: "Hi Sarah, an earlier time opened up.",
         direction: "outbound",
@@ -313,26 +338,85 @@ describe("ElevenLabsOutboundClient", () => {
       },
     });
 
-    const result = await client.call({
-      toNumber: "+14165550101",
-      dynamicVariables: {
-        offer_id: "offer-sarah",
-        customer_name: "Sarah",
-        offer_message: "An earlier chair just opened.",
-        secret__actor_token: "signed-token",
+    const result = await client.startCall({
+      idempotencyKey: "offer-sarah",
+      to: "+14165550101",
+      context: {
+        customer: { id: "sarah", name: "Sarah" },
+        offer: {
+          id: "offer-sarah",
+          message: "An earlier chair just opened.",
+          expiresAt: "2026-07-18T18:00:00.000Z",
+          discountPercent: 0,
+        },
+        appointment: {
+          barberName: "Jeremy",
+          serviceName: "Signature haircut",
+          currentTime: "Monday at 6:00 PM",
+          proposedTime: "Monday at 5:00 PM",
+          summary: "Current appointment is Monday at 6:00 PM.",
+        },
+        timezone,
+        actorToken: "signed-token",
       },
     });
 
-    expect(result).toEqual({ providerMessageId: "conversation-1", callSid: "CA123" });
+    expect(result).toEqual({
+      provider: "elevenlabs",
+      conversationId: "conversation-1",
+      providerCallId: "CA123",
+    });
     expect(captured.body).toMatchObject({
       agent_id: "agent-1",
       agent_phone_number_id: "phone-1",
       to_number: "+14165550101",
       call_recording_enabled: false,
       conversation_initiation_client_data: {
-        dynamic_variables: expect.objectContaining({ offer_id: "offer-sarah" }),
+        dynamic_variables: expect.objectContaining({
+          request_id: "offer-sarah",
+          offer_id: "offer-sarah",
+          customer_id: "sarah",
+        }),
       },
     });
     expect(captured.headers).toMatchObject({ "xi-api-key": "test-key" });
+  });
+
+  it("accepts a successful provider response without an optional Twilio call id", async () => {
+    const client = new ElevenLabsOutboundClient({
+      apiKey: "test-key",
+      agentId: "agent-1",
+      phoneNumberId: "phone-1",
+      fetchImpl: async () => new Response(JSON.stringify({
+        success: true,
+        conversation_id: "conversation-without-call-sid",
+      }), { status: 200, headers: { "content-type": "application/json" } }),
+    });
+
+    await expect(client.startCall({
+      idempotencyKey: "offer-1",
+      to: "+14165550101",
+      context: {
+        customer: { id: "customer-1", name: "Customer" },
+        offer: {
+          id: "offer-1",
+          message: "An appointment opened up.",
+          expiresAt: "2026-07-18T18:00:00.000Z",
+          discountPercent: 0,
+        },
+        appointment: {
+          barberName: "Jeremy",
+          serviceName: "Signature haircut",
+          currentTime: null,
+          proposedTime: "Monday at 5:00 PM",
+          summary: "No appointment is being moved.",
+        },
+        timezone,
+        actorToken: "signed-token",
+      },
+    })).resolves.toEqual({
+      provider: "elevenlabs",
+      conversationId: "conversation-without-call-sid",
+    });
   });
 });

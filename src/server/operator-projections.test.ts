@@ -18,10 +18,10 @@ async function populatedState() {
   const store = new InMemoryStore(createDemoState({
     now,
     timezone: "America/Toronto",
-    preservedIdentities: {
-      joshTelegramChatId: "1001",
-      alexTelegramChatId: "2002",
-      sarahPhone: "+14165550101",
+    contactOverrides: {
+      josh: { telegramChatId: "1001" },
+      alex: { telegramChatId: "2002" },
+      sarah: { phone: "+14165550101" },
     },
   }));
   await recordConversationEvent(store, {

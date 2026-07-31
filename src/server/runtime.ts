@@ -50,9 +50,6 @@ async function openStore(config: AppConfig, clock: () => string): Promise<StoreH
   const seed = createDemoState({
     now: clock(),
     timezone: config.timezone,
-    ...(config.sarahPhone === undefined ? {} : {
-      preservedIdentities: { sarahPhone: config.sarahPhone },
-    }),
   });
   const memory = (fallbackReason?: string): StoreHandle => ({
     store: new InMemoryStore(seed),
@@ -111,30 +108,6 @@ export async function createRuntime(
 ): Promise<StandbyRuntime> {
   const clock = options.clock ?? (() => new Date().toISOString());
   const storeHandle = await openStore(config, clock);
-  const configuredSarahPhone = config.sarahPhone;
-  if (configuredSarahPhone !== undefined) {
-    const current = await storeHandle.store.read();
-    const sarah = current.customers.find((customer) => customer.id === "sarah");
-    if (
-      sarah !== undefined
-      && (
-        sarah.phone !== configuredSarahPhone
-        || sarah.contactPreference !== "voice"
-        || !sarah.earlierMoveConsent
-        || !sarah.pastCustomerOptIn
-      )
-    ) {
-      await storeHandle.store.transaction((state) => {
-        const recipient = state.customers.find((customer) => customer.id === "sarah");
-        if (recipient === undefined) return;
-        recipient.phone = configuredSarahPhone;
-        recipient.contactPreference = "voice";
-        recipient.earlierMoveConsent = true;
-        recipient.pastCustomerOptIn = true;
-        recipient.updatedAt = clock();
-      });
-    }
-  }
   const engine = new StandbyEngine(storeHandle.store);
   const toolbox = new SchedulingToolbox(storeHandle.store, engine, clock);
 
@@ -165,44 +138,43 @@ export async function createRuntime(
           linkSecret: config.telegramWebhookSecret,
           clock,
         });
-  const elevenLabsWebhooks = config.elevenLabsAgentId === undefined
-    || config.elevenLabsWebhookSecret === undefined
+  const elevenLabsWebhooks = config.voiceAgent.provider !== "elevenlabs"
       ? undefined
       : new ElevenLabsWebhookService({
           store: storeHandle.store,
-          engine,
           toolbox,
-          agentId: config.elevenLabsAgentId,
-          webhookSecret: config.elevenLabsWebhookSecret,
+          agentId: config.voiceAgent.agentId,
+          webhookSecret: config.voiceAgent.webhookSecret,
+          actorTokenSecret: config.voiceAgent.actorTokenSecret,
           clock,
         });
-  const elevenLabsOutbound = config.elevenLabsApiKey === undefined
-    || config.elevenLabsAgentId === undefined
-    || config.elevenLabsPhoneNumberId === undefined
+  const elevenLabsOutbound = config.voiceAgent.provider !== "elevenlabs"
+    || !config.voiceAgent.outboundEnabled
       ? undefined
       : new ElevenLabsOutboundClient({
-          apiKey: config.elevenLabsApiKey,
-          agentId: config.elevenLabsAgentId,
-          phoneNumberId: config.elevenLabsPhoneNumberId,
+          apiKey: config.voiceAgent.apiKey,
+          agentId: config.voiceAgent.agentId,
+          phoneNumberId: config.voiceAgent.phoneNumberId,
+          baseUrl: config.voiceAgent.baseUrl,
+          timeoutMs: config.voiceAgent.requestTimeoutMs,
           ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
         });
-  const worker = backboard === undefined || telegram === undefined
+  const hasOutboundTransport = telegram !== undefined || elevenLabsOutbound !== undefined;
+  const offerSender = !config.outreachWorkerEnabled || !hasOutboundTransport
     ? undefined
-    : new RefillWorker(
-        storeHandle.store,
-        new ProviderOfferSender({
+    : new ProviderOfferSender({
           store: storeHandle.store,
-          backboard,
-          telegram,
-          ...(elevenLabsOutbound === undefined ? {} : { elevenLabs: elevenLabsOutbound }),
-          voiceTokenSecret: config.voiceActorSecret,
+          ...(backboard === undefined ? {} : { backboard }),
+          ...(telegram === undefined ? {} : { telegram }),
+          ...(elevenLabsOutbound === undefined ? {} : { voice: elevenLabsOutbound }),
+          ...(config.voiceAgent.provider === "elevenlabs"
+            ? { voiceTokenSecret: config.voiceAgent.actorTokenSecret }
+            : {}),
           clock,
-        }),
-        {
-          workerId: `standby-${process.pid}`,
-          ...(configuredSarahPhone === undefined ? {} : { priorityVoiceCustomerId: "sarah" }),
-        },
-      );
+        });
+  const worker = offerSender === undefined
+    ? undefined
+    : new RefillWorker(storeHandle.store, offerSender, { workerId: `standby-${process.pid}` });
 
   const app = await buildServer({
     config,

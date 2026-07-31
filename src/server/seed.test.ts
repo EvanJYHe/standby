@@ -24,9 +24,6 @@ describe("demo seed", () => {
       expect.objectContaining({ customerId: "josh", barberId: "jeremy", startAt: at(13) }),
       expect.objectContaining({ customerId: "sarah", barberId: "jeremy", startAt: at(14) }),
     ]));
-    expect(state.appointments).not.toContainEqual(
-      expect.objectContaining({ barberId: "jeremy", startAt: at(17), status: "confirmed" }),
-    );
     expect(state.waitlist).toContainEqual(expect.objectContaining({
       customerId: "alex",
       barberId: "jeremy",
@@ -40,14 +37,14 @@ describe("demo seed", () => {
     });
   });
 
-  it("preserves linked Telegram IDs and Sarah's configured phone across reset", () => {
+  it("applies persisted contact channels by customer ID across reset", () => {
     const state = createDemoState({
       now: "2026-07-18T16:00:00.000Z",
       timezone: "America/Toronto",
-      preservedIdentities: {
-        joshTelegramChatId: "1001",
-        alexTelegramChatId: "2002",
-        sarahPhone: "+14165550101",
+      contactOverrides: {
+        josh: { telegramChatId: "1001" },
+        alex: { telegramChatId: "2002" },
+        sarah: { phone: "+14165550101" },
       },
     });
 
@@ -90,7 +87,7 @@ describe("demo seed", () => {
     expect(demoWeekMinutes / capacityMinutes).toBeLessThanOrEqual(0.80);
   });
 
-  it("creates a realistic collision-free operational week without fake provider activity", () => {
+  it("creates a realistic collision-free operational week with representative contact history", () => {
     const state = createDemoState({
       now: "2026-07-18T16:00:00.000Z",
       timezone: "America/Toronto",
@@ -108,8 +105,13 @@ describe("demo seed", () => {
           .toISODate()));
       expect(workingDates.size).toBeGreaterThanOrEqual(3);
     }
-    expect(state.conversations).toEqual([]);
-    expect(state.conversationEvents).toEqual([]);
+    expect(state.conversations).toHaveLength(5);
+    expect(state.conversations.every((conversation) => (
+      conversation.providerConversationId?.startsWith("demo-") ?? false
+    ))).toBe(true);
+    expect(state.conversationEvents.length).toBeGreaterThan(state.conversations.length);
+    expect(state.processedEvents).toEqual([]);
+    expect(state.backboardThreads).toEqual([]);
     expect(state.customerNotes).toHaveLength(2);
   });
 

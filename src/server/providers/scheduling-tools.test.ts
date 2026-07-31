@@ -1,4 +1,3 @@
-import { DateTime } from "luxon";
 import { describe, expect, it } from "vitest";
 
 import { StandbyEngine } from "../../domain/engine.js";
@@ -44,8 +43,6 @@ describe("SchedulingToolbox", () => {
   it("uses the actor for reads and enforces confirmation for bookings", async () => {
     const store = new InMemoryStore(createDemoState({ now, timezone }));
     const toolbox = new SchedulingToolbox(store, new StandbyEngine(store), () => now);
-    const demoDate = "2026-07-20";
-    const four = DateTime.fromISO(`${demoDate}T16:00`, { zone: timezone }).toUTC().toISO()!;
 
     const appointments = await toolbox.execute(
       "get_my_appointments",
@@ -58,12 +55,26 @@ describe("SchedulingToolbox", () => {
       ]),
     });
 
+    const availability = await toolbox.execute(
+      "get_availability",
+      {
+        date: "2026-07-20",
+        service_id: "haircut",
+        include_alternates: true,
+      },
+      { provider: "telegram", customerId: "alex" },
+    );
+    const [freeSlot] = (availability as {
+      slots: Array<{ barberId: string; startAt: string }>;
+    }).slots;
+    expect(freeSlot).toBeDefined();
+
     const proposed = await toolbox.execute(
       "book_appointment",
       {
-        barber_id: "jeremy",
+        barber_id: freeSlot!.barberId,
         service_id: "haircut",
-        start_at: four,
+        start_at: freeSlot!.startAt,
         confirmed: false,
       },
       { provider: "telegram", customerId: "alex" },

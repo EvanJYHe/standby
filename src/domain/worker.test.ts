@@ -132,6 +132,10 @@ class DeterministicSender implements OfferSender {
 
   constructor(private readonly failuresBeforeSuccess = 0) {}
 
+  canReach(): boolean {
+    return true;
+  }
+
   async send(_delivery: OfferDelivery): Promise<{ providerMessageId: string }> {
     this.attempts += 1;
     if (this.attempts <= this.failuresBeforeSuccess) throw new Error("provider unavailable");
@@ -191,37 +195,37 @@ describe("RefillWorker", () => {
     expect(accepted).toMatchObject({ type: "committed", operation: "accept_offer" });
   });
 
-  it("calls the configured priority voice recipient before unrelated ranked customers", async () => {
+  it("skips a ranked customer when their selected channel is unreachable", async () => {
     const initial = state();
-    initial.appointments = initial.appointments.filter((appointment) => appointment.id !== "sarah-appt");
+    delete initial.customers.find((customer) => customer.id === "sarah")!.phone;
     const deliveries: OfferDelivery[] = [];
     const store = new InMemoryStore(initial);
     const worker = new RefillWorker(store, {
+      canReach: (customer, channel) => channel === "telegram" && customer.telegramChatId !== undefined,
       send: async (delivery) => {
         deliveries.push(delivery);
-        return { providerMessageId: "priority-call" };
+        return { providerMessageId: "telegram-message" };
       },
     }, {
-      workerId: "priority-worker",
-      idFactory: () => "offer-priority-sarah",
-      priorityVoiceCustomerId: "sarah",
+      workerId: "reachable-worker",
+      idFactory: () => "offer-alex",
     });
 
     const result = await worker.runOnce("2026-07-20T16:00:00.000Z");
 
-    expect(result).toMatchObject({ status: "offer_delivered", customerId: "sarah" });
+    expect(result).toMatchObject({ status: "offer_delivered", customerId: "alex" });
     expect(deliveries[0]).toMatchObject({
-      customer: { id: "sarah", phone: "+14165550101" },
+      customer: { id: "alex", telegramChatId: "2002" },
       offer: {
-        customerId: "sarah",
-        channel: "voice",
-        candidateKind: "past_customer",
+        customerId: "alex",
+        channel: "telegram",
+        candidateKind: "waitlist",
         discountPercent: 0,
       },
     });
   });
 
-  it("does not place overlapping calls to the priority voice recipient", async () => {
+  it("defers a job when every reachable recipient already has active outreach", async () => {
     const initial = state();
     initial.refillJobs[0] = {
       ...initial.refillJobs[0]!,
@@ -250,20 +254,20 @@ describe("RefillWorker", () => {
       id: "job-2",
       sourceAppointmentId: "another-cancelled-appointment",
       status: "pending",
-      attemptedCustomerIds: [],
+      attemptedCustomerIds: ["alex"],
       createdAt: "2026-07-20T15:56:00.000Z",
       updatedAt: "2026-07-20T15:56:00.000Z",
     });
     const deliveries: OfferDelivery[] = [];
     const store = new InMemoryStore(initial);
     const worker = new RefillWorker(store, {
+      canReach: () => true,
       send: async (delivery) => {
         deliveries.push(delivery);
         return { providerMessageId: "unexpected-call" };
       },
     }, {
-      workerId: "priority-worker",
-      priorityVoiceCustomerId: "sarah",
+      workerId: "busy-recipient-worker",
     });
 
     expect(await worker.runOnce("2026-07-20T16:01:00.000Z")).toEqual({ status: "idle" });
@@ -271,16 +275,18 @@ describe("RefillWorker", () => {
     expect(deferred).toMatchObject({
       status: "pending",
       retryAt: "2026-07-20T16:01:15.000Z",
-      attemptedCustomerIds: [],
+      attemptedCustomerIds: ["alex"],
     });
     expect(deliveries).toHaveLength(0);
   });
 
-  it("retries provider delivery before exposing a successful offer", async () => {
-    const store = new InMemoryStore(state());
+  it("retries idempotent message delivery before exposing a successful offer", async () => {
+    const initial = state();
+    initial.customers.find((customer) => customer.id === "sarah")!.earlierMoveConsent = false;
+    const store = new InMemoryStore(initial);
     const worker = new RefillWorker(store, new DeterministicSender(2), {
       workerId: "worker-a",
-      idFactory: () => "offer-sarah",
+      idFactory: () => "offer-alex",
       maxDeliveryAttempts: 3,
     });
 
@@ -293,7 +299,7 @@ describe("RefillWorker", () => {
     });
   });
 
-  it("records a visible failure and releases the job after delivery retries are exhausted", async () => {
+  it("does not blindly retry voice initiation after an ambiguous provider failure", async () => {
     const store = new InMemoryStore(state());
     const worker = new RefillWorker(store, new DeterministicSender(99), {
       workerId: "worker-a",
@@ -303,14 +309,70 @@ describe("RefillWorker", () => {
 
     const result = await worker.runOnce("2026-07-20T16:00:00.000Z");
 
-    expect(result).toMatchObject({ status: "delivery_failed" });
+    expect(result).toMatchObject({ status: "delivery_uncertain" });
     const snapshot = await store.read();
-    expect(snapshot.offers[0]).toMatchObject({ status: "delivery_failed", deliveryAttempts: 3 });
-    expect(snapshot.refillJobs[0]).toMatchObject({ status: "pending" });
-    expect(snapshot.refillJobs[0]?.currentOfferId).toBeUndefined();
+    expect(snapshot.offers[0]).toMatchObject({ status: "pending", deliveryAttempts: 1 });
+    expect(snapshot.refillJobs[0]).toMatchObject({
+      status: "awaiting_offer",
+      currentOfferId: "offer-sarah",
+    });
     expect(snapshot.refillJobs[0]?.timeline).toContainEqual(
-      expect.objectContaining({ type: "delivery_failed" }),
+      expect.objectContaining({ type: "delivery_uncertain" }),
     );
+
+    const recoveryWorker = new RefillWorker(store, new DeterministicSender(), {
+      workerId: "worker-b",
+      idFactory: () => "offer-alex",
+    });
+    await expect(recoveryWorker.runOnce("2026-07-20T16:16:00.000Z"))
+      .resolves.toMatchObject({ status: "offer_delivered", customerId: "alex" });
+    const recovered = await store.read();
+    expect(recovered.offers.find((offer) => offer.id === "offer-sarah")?.status).toBe("expired");
+  });
+
+  it("enforces one active outreach per customer across concurrent jobs", async () => {
+    const initial = state();
+    initial.appointments.push({
+      ...initial.appointments[0]!,
+      id: "second-cancelled-appointment",
+      startAt: DateTime.fromISO(slot5).plus({ days: 1 }).toUTC().toISO()!,
+      endAt: DateTime.fromISO(slot6).plus({ days: 1 }).toUTC().toISO()!,
+    });
+    initial.refillJobs.push({
+      ...initial.refillJobs[0]!,
+      id: "job-2",
+      sourceAppointmentId: "second-cancelled-appointment",
+      slotStartAt: DateTime.fromISO(slot5).plus({ days: 1 }).toUTC().toISO()!,
+      slotEndAt: DateTime.fromISO(slot6).plus({ days: 1 }).toUTC().toISO()!,
+    });
+    const store = new InMemoryStore(initial);
+    const deliveries: OfferDelivery[] = [];
+    const sender: OfferSender = {
+      canReach: () => true,
+      send: async (delivery) => {
+        deliveries.push(delivery);
+        return { providerMessageId: `provider-${delivery.offer.id}` };
+      },
+    };
+    const workerA = new RefillWorker(store, sender, {
+      workerId: "worker-a",
+      idFactory: () => "offer-a",
+    });
+    const workerB = new RefillWorker(store, sender, {
+      workerId: "worker-b",
+      idFactory: () => "offer-b",
+    });
+
+    await Promise.all([
+      workerA.runOnce("2026-07-20T16:00:00.000Z"),
+      workerB.runOnce("2026-07-20T16:00:00.000Z"),
+    ]);
+
+    const snapshot = await store.read();
+    expect(snapshot.offers.filter((offer) => (
+      offer.customerId === "sarah" && ["pending", "delivered"].includes(offer.status)
+    ))).toHaveLength(1);
+    expect(deliveries.filter((delivery) => delivery.customer.id === "sarah")).toHaveLength(1);
   });
 
   it("expires an unanswered offer and advances to the next sequential candidate", async () => {

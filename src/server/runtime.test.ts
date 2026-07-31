@@ -15,7 +15,7 @@ const config: AppConfig = {
   publicBaseUrl: "http://localhost:3000",
   timezone: "America/Toronto",
   demoMode: true,
-  voiceActorSecret: "test-voice-actor-secret-with-enough-length",
+  outreachWorkerEnabled: false,
   dataStore: "memory",
   mongoUri: undefined,
   mongoDatabase: "standby_runtime_test",
@@ -26,11 +26,7 @@ const config: AppConfig = {
   backboardApiKey: undefined,
   backboardAssistantId: undefined,
   backboardApiIp: undefined,
-  elevenLabsApiKey: undefined,
-  elevenLabsAgentId: undefined,
-  elevenLabsPhoneNumberId: undefined,
-  elevenLabsWebhookSecret: undefined,
-  sarahPhone: "+14165550101",
+  voiceAgent: { provider: "disabled", outboundEnabled: false },
 };
 
 describe("Standby runtime", () => {
@@ -60,6 +56,33 @@ describe("Standby runtime", () => {
         expect.objectContaining({ customerName: "Sarah", status: "confirmed" }),
       ]),
     });
+  });
+
+  it("builds a voice-only worker without mutating a named demo customer", async () => {
+    runtime = await createRuntime({
+      ...config,
+      outreachWorkerEnabled: true,
+      voiceAgent: {
+        provider: "elevenlabs",
+        outboundEnabled: true,
+        apiKey: "test-api-key",
+        agentId: "agent-1",
+        phoneNumberId: "phone-1",
+        webhookSecret: "voice-webhook-secret-that-is-long-enough",
+        actorTokenSecret: "voice-actor-secret-that-is-at-least-32-characters",
+        baseUrl: "https://api.elevenlabs.io",
+        requestTimeoutMs: 20_000,
+      },
+    }, {
+      clock: () => now,
+      fetchImpl: async () => {
+        throw new Error("The provider must not be called while constructing the runtime.");
+      },
+    });
+
+    expect(runtime.workerEnabled).toBe(true);
+    expect((await runtime.store.read()).customers.find((customer) => customer.id === "sarah")?.phone)
+      .toBeUndefined();
   });
 
   it("serves the built React shell and preserves API 404s", async () => {

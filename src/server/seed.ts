@@ -15,16 +15,15 @@ import type {
   Service,
 } from "../domain/types.js";
 
-interface PreservedIdentities {
-  joshTelegramChatId?: string;
-  alexTelegramChatId?: string;
-  sarahPhone?: string;
+interface CustomerContactOverride {
+  telegramChatId?: string;
+  phone?: string;
 }
 
 interface CreateDemoStateOptions {
   now: string;
   timezone: string;
-  preservedIdentities?: PreservedIdentities;
+  contactOverrides?: Record<string, CustomerContactOverride>;
 }
 
 export function getDemoDate(now: string, timezone: string): string {
@@ -630,7 +629,7 @@ export function createDemoState(options: CreateDemoStateOptions): StandbyState {
     .fromISO(demoDate, { zone: options.timezone })
     .plus({ days: offsetDays })
     .toISODate()!;
-  const identities = options.preservedIdentities ?? {};
+  const contacts = options.contactOverrides ?? {};
   const haircut: Service = {
     id: "haircut",
     name: "Signature haircut",
@@ -670,13 +669,10 @@ export function createDemoState(options: CreateDemoStateOptions): StandbyState {
       weeklyHours: standardHours(),
     },
   ];
-  const customers: Customer[] = [
+  const customers: Customer[] = ([
     {
       id: "josh",
       name: "Josh",
-      ...(identities.joshTelegramChatId === undefined ? {} : {
-        telegramChatId: identities.joshTelegramChatId,
-      }),
       contactPreference: "telegram",
       earlierMoveConsent: false,
       flexibleBarberPreference: false,
@@ -685,9 +681,6 @@ export function createDemoState(options: CreateDemoStateOptions): StandbyState {
     {
       id: "sarah",
       name: "Sarah",
-      ...(identities.sarahPhone === undefined || identities.sarahPhone === "" ? {} : {
-        phone: identities.sarahPhone,
-      }),
       contactPreference: "voice",
       earlierMoveConsent: true,
       flexibleBarberPreference: false,
@@ -696,9 +689,6 @@ export function createDemoState(options: CreateDemoStateOptions): StandbyState {
     {
       id: "alex",
       name: "Alex",
-      ...(identities.alexTelegramChatId === undefined ? {} : {
-        telegramChatId: identities.alexTelegramChatId,
-      }),
       contactPreference: "telegram",
       earlierMoveConsent: false,
       flexibleBarberPreference: false,
@@ -747,7 +737,10 @@ export function createDemoState(options: CreateDemoStateOptions): StandbyState {
       flexibleBarberPreference: index % 3 === 0,
       pastCustomerOptIn: !currentBookingCustomerIds.has(id) && index % 4 !== 0,
     })),
-  ];
+  ] satisfies Customer[]).map((customer) => ({
+    ...customer,
+    ...contacts[customer.id],
+  }));
   const appointments: Appointment[] = [
     seededAppointment("josh-appt", "josh", "jeremy", haircut, at(demoDate, 13, 0, options.timezone), options.now),
     seededAppointment("sarah-appt", "sarah", "jeremy", haircut, at(demoDate, 14, 0, options.timezone), options.now),

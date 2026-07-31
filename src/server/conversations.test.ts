@@ -11,7 +11,7 @@ function store() {
   return new InMemoryStore(createDemoState({
     now,
     timezone: "America/Toronto",
-    preservedIdentities: { alexTelegramChatId: "2002" },
+    contactOverrides: { alex: { telegramChatId: "2002" } },
   }));
 }
 
@@ -47,8 +47,8 @@ describe("recordConversationEvent", () => {
 
     const snapshot = await standbyStore.read();
     expect(first).toEqual({ status: "recorded", conversationId: second.conversationId });
-    expect(snapshot.conversations).toEqual([
-      expect.objectContaining({
+    expect(snapshot.conversations.find((conversation) => conversation.id === second.conversationId))
+      .toMatchObject({
         id: second.conversationId,
         customerId: "alex",
         channel: "telegram",
@@ -58,14 +58,15 @@ describe("recordConversationEvent", () => {
         preview: "Yes — would you like me to reserve it?",
         createdAt: now,
         updatedAt: later,
-      }),
-    ]);
-    expect(snapshot.conversationEvents.map((event) => ({
-      text: event.text,
-      direction: event.direction,
-      speaker: event.speaker,
-      deliveryState: event.deliveryState,
-    }))).toEqual([
+      });
+    expect(snapshot.conversationEvents
+      .filter((event) => event.conversationId === second.conversationId)
+      .map((event) => ({
+        text: event.text,
+        direction: event.direction,
+        speaker: event.speaker,
+        deliveryState: event.deliveryState,
+      }))).toEqual([
       {
         text: "Is the 6 PM opening still available?",
         direction: "inbound",
@@ -96,17 +97,18 @@ describe("recordConversationEvent", () => {
       occurredAt: now,
     };
 
-    await recordConversationEvent(standbyStore, input);
+    const recorded = await recordConversationEvent(standbyStore, input);
     const duplicate = await recordConversationEvent(standbyStore, input);
 
     expect(duplicate.status).toBe("duplicate");
-    expect((await standbyStore.read()).conversationEvents).toHaveLength(1);
+    expect((await standbyStore.read()).conversationEvents
+      .filter((event) => event.conversationId === recorded.conversationId)).toHaveLength(1);
   });
 
   it("stores only normalized scalar metadata and trims safe text", async () => {
     const standbyStore = store();
 
-    await recordConversationEvent(standbyStore, {
+    const recorded = await recordConversationEvent(standbyStore, {
       customerId: "alex",
       channel: "voice",
       conversationDirection: "outbound",
@@ -123,13 +125,13 @@ describe("recordConversationEvent", () => {
     });
 
     const snapshot = await standbyStore.read();
-    expect(snapshot.conversations[0]).toMatchObject({
+    expect(snapshot.conversations.find((conversation) => conversation.id === recorded.conversationId)).toMatchObject({
       channel: "voice",
       direction: "outbound",
       state: "completed",
       offerId: "offer-1",
     });
-    expect(snapshot.conversationEvents[0]).toMatchObject({
+    expect(snapshot.conversationEvents.find((event) => event.conversationId === recorded.conversationId)).toMatchObject({
       text: "Yes, please move me.",
       metadata: { timeInCallSeconds: 4 },
       offerId: "offer-1",

@@ -11,6 +11,8 @@ describe("loadConfig", () => {
     expect(config.publicBaseUrl).toBe("http://127.0.0.1:3100");
     expect(config.timezone).toBe("America/Toronto");
     expect(config.demoMode).toBe(true);
+    expect(config.outreachWorkerEnabled).toBe(false);
+    expect(config.voiceAgent).toEqual({ provider: "disabled", outboundEnabled: false });
     expect(config.telegramLocalPolling).toBe(false);
     expect(config.telegramApiIp).toBeUndefined();
     expect(config.backboardApiIp).toBeUndefined();
@@ -36,19 +38,53 @@ describe("loadConfig", () => {
     expect(() => loadConfig({ DATA_STORE: "spreadsheet" })).toThrow();
   });
 
-  it("accepts only an E.164 Sarah destination when one is configured", () => {
-    expect(loadConfig({ SARAH_PHONE: "" }).sarahPhone).toBeUndefined();
-    expect(loadConfig({ SARAH_PHONE: "+14165550101" }).sarahPhone).toBe("+14165550101");
-    expect(() => loadConfig({ SARAH_PHONE: "416-555-0101" })).toThrow();
+  it("rejects partial provider configuration instead of constructing half an adapter", () => {
+    expect(() => loadConfig({
+      VOICE_PROVIDER: "elevenlabs",
+      ELEVENLABS_AGENT_ID: "agent-1",
+    })).toThrow();
+    expect(loadConfig({ ELEVENLABS_AGENT_ID: "ignored-until-opted-in" }).voiceAgent)
+      .toEqual({ provider: "disabled", outboundEnabled: false });
+    expect(() => loadConfig({ VOICE_OUTBOUND_ENABLED: "true" })).toThrow(
+      "requires VOICE_PROVIDER=elevenlabs",
+    );
   });
 
-  it("derives a provider actor secret without admin-session configuration", () => {
-    const config = loadConfig({ ELEVENLABS_WEBHOOK_SECRET: "voice-secret" });
+  it("supports inbound voice without requiring outbound calling credentials", () => {
+    const config = loadConfig({
+      VOICE_PROVIDER: "elevenlabs",
+      VOICE_ACTOR_TOKEN_SECRET: "voice-actor-secret-that-is-at-least-32-characters",
+      ELEVENLABS_AGENT_ID: "agent-1",
+      ELEVENLABS_WEBHOOK_SECRET: "voice-webhook-secret",
+    });
 
-    expect(config.voiceActorSecret).toBe("voice-secret");
+    expect(config.voiceAgent).toMatchObject({
+      provider: "elevenlabs",
+      outboundEnabled: false,
+      agentId: "agent-1",
+    });
+    expect("apiKey" in config.voiceAgent).toBe(false);
+    expect("phoneNumberId" in config.voiceAgent).toBe(false);
+  });
+
+  it("builds an explicit ElevenLabs adapter configuration with independent secrets", () => {
+    const config = loadConfig({
+      VOICE_PROVIDER: "elevenlabs",
+      VOICE_OUTBOUND_ENABLED: "true",
+      VOICE_ACTOR_TOKEN_SECRET: "voice-actor-secret-that-is-at-least-32-characters",
+      ELEVENLABS_API_KEY: "api-key",
+      ELEVENLABS_AGENT_ID: "agent-1",
+      ELEVENLABS_PHONE_NUMBER_ID: "phone-1",
+      ELEVENLABS_WEBHOOK_SECRET: "voice-webhook-secret",
+    });
+
+    expect(config.voiceAgent).toMatchObject({
+      provider: "elevenlabs",
+      outboundEnabled: true,
+      agentId: "agent-1",
+      actorTokenSecret: "voice-actor-secret-that-is-at-least-32-characters",
+    });
     expect("demoAdminPin" in config).toBe(false);
     expect("adminSessionSecret" in config).toBe(false);
-    expect(loadConfig({}).voiceActorSecret).toEqual(expect.any(String));
-    expect(loadConfig({}).voiceActorSecret.length).toBeGreaterThan(0);
   });
 });

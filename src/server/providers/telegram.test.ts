@@ -58,8 +58,12 @@ describe("TelegramWebhookHandler", () => {
     const initial = createDemoState({
       now,
       timezone,
-      preservedIdentities: { joshTelegramChatId: "1001", alexTelegramChatId: "2002" },
+      contactOverrides: {
+        josh: { telegramChatId: "1001" },
+        alex: { telegramChatId: "2002" },
+      },
     });
+    const seededConversationIds = new Set(initial.conversations.map((conversation) => conversation.id));
     const store = new InMemoryStore(initial);
     const transport = new CapturingTelegramTransport();
     const calls: Array<{ customerId: string; threadId: string | undefined; content: string }> = [];
@@ -104,8 +108,13 @@ describe("TelegramWebhookHandler", () => {
     ]));
     expect(transport.sent).toHaveLength(2);
     const snapshot = await store.read();
-    expect(snapshot.conversations).toHaveLength(2);
-    const joshConversation = snapshot.conversations.find((conversation) => conversation.customerId === "josh")!;
+    const recordedConversations = snapshot.conversations.filter(
+      (conversation) => !seededConversationIds.has(conversation.id),
+    );
+    expect(recordedConversations).toHaveLength(2);
+    const joshConversation = recordedConversations.find(
+      (conversation) => conversation.customerId === "josh" && conversation.providerConversationId === "1001",
+    )!;
     expect(snapshot.conversationEvents
       .filter((event) => event.conversationId === joshConversation.id)
       .map((event) => ({ text: event.text, direction: event.direction, speaker: event.speaker })))
@@ -119,7 +128,7 @@ describe("TelegramWebhookHandler", () => {
     const initial = createDemoState({
       now,
       timezone,
-      preservedIdentities: { alexTelegramChatId: "2002" },
+      contactOverrides: { alex: { telegramChatId: "2002" } },
     });
     initial.refillJobs.push({
       id: "job-1",
@@ -186,7 +195,7 @@ describe("TelegramWebhookHandler", () => {
     const store = new InMemoryStore(createDemoState({
       now,
       timezone,
-      preservedIdentities: { alexTelegramChatId: "2002" },
+      contactOverrides: { alex: { telegramChatId: "2002" } },
     }));
     const transport = new CapturingTelegramTransport();
     const backboard = { reply: async () => { throw new Error("provider secret detail"); } } as unknown as BackboardClient;

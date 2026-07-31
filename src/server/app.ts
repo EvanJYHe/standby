@@ -26,6 +26,7 @@ import {
 } from "./operator-projections.js";
 import type { ElevenLabsWebhookService } from "./providers/elevenlabs.js";
 import type { TelegramWebhookHandler } from "./providers/telegram.js";
+import { e164PhoneSchema } from "./providers/voice-agent.js";
 import { createDemoState, getDemoDate } from "./seed.js";
 
 interface BuildServerOptions {
@@ -84,6 +85,7 @@ const appointmentMoveSchema = z.object({
 
 const customerPatchSchema = z.object({
   contactPreference: z.enum(["telegram", "voice"]).optional(),
+  phone: e164PhoneSchema.nullable().optional(),
   replacementOffersEnabled: z.boolean().optional(),
   earlierMoveConsent: z.boolean().optional(),
   flexibleBarberPreference: z.boolean().optional(),
@@ -97,8 +99,16 @@ const customerNoteSchema = z.object({
 const customerCreateSchema = z.object({
   name: z.string().trim().min(1).max(80),
   contactPreference: z.enum(["telegram", "voice"]).optional(),
-  phone: z.string().trim().min(1).max(40).optional(),
-}).strict();
+  phone: e164PhoneSchema.optional(),
+}).strict().superRefine((value, context) => {
+  if (value.contactPreference === "voice" && value.phone === undefined) {
+    context.addIssue({
+      code: "custom",
+      path: ["phone"],
+      message: "A voice customer needs an E.164 phone number.",
+    });
+  }
+});
 
 const waitlistPatchSchema = z.object({
   status: z.enum(["active", "paused", "withdrawn"]).optional(),
@@ -130,13 +140,11 @@ function providerReadiness(config: AppConfig, storeKind: "memory" | "mongodb") {
     backboard: config.backboardApiKey !== undefined && config.backboardAssistantId !== undefined
       ? "configured"
       : "unconfigured",
-    elevenlabs: config.elevenLabsApiKey !== undefined
-      && config.elevenLabsAgentId !== undefined
-      && config.elevenLabsPhoneNumberId !== undefined
-      && config.elevenLabsWebhookSecret !== undefined
-      && config.sarahPhone !== undefined
-      ? "configured"
-      : "unconfigured",
+    elevenlabs: config.voiceAgent.provider === "disabled"
+      ? "disabled"
+      : config.voiceAgent.outboundEnabled
+        ? "configured"
+        : "inbound_only",
   } as const;
 }
 
@@ -194,13 +202,13 @@ export async function buildServer(options: BuildServerOptions): Promise<FastifyI
   });
 
   app.post("/webhooks/elevenlabs/context", async (request, reply) => {
-    if (options.elevenLabsWebhooks === undefined || options.config.elevenLabsWebhookSecret === undefined) {
+    if (options.elevenLabsWebhooks === undefined || options.config.voiceAgent.provider !== "elevenlabs") {
       return reply.status(503).send({ error: "elevenlabs_unconfigured" });
     }
     const supplied = request.headers["x-standby-webhook-secret"];
     if (!safeSecretEqual(
       typeof supplied === "string" ? supplied : supplied?.[0],
-      options.config.elevenLabsWebhookSecret,
+      options.config.voiceAgent.webhookSecret,
     )) {
       return reply.status(401).send({ error: "invalid_elevenlabs_secret" });
     }
@@ -461,7 +469,10 @@ export async function buildServer(options: BuildServerOptions): Promise<FastifyI
     const found = await options.store.transaction((state) => {
       const customer = state.customers.find((candidate) => candidate.id === request.params.id);
       if (customer === undefined) return false;
-      Object.assign(customer, patch, { updatedAt: clock() });
+      const { phone, ...attributes } = patch;
+      Object.assign(customer, attributes, { updatedAt: clock() });
+      if (phone === null) delete customer.phone;
+      else if (phone !== undefined) customer.phone = phone;
       if (patch.replacementOffersEnabled === false) {
         for (const offer of state.offers) {
           if (offer.customerId !== customer.id || !["pending", "delivered"].includes(offer.status)) continue;
@@ -685,19 +696,13 @@ export async function buildServer(options: BuildServerOptions): Promise<FastifyI
     const reset = createDemoState({
       now: currentTime,
       timezone: current.settings.timezone,
-      preservedIdentities: {
-        ...(current.customers.find((customer) => customer.id === "josh")?.telegramChatId === undefined
-          ? {}
-          : { joshTelegramChatId: current.customers.find((customer) => customer.id === "josh")!.telegramChatId! }),
-        ...(current.customers.find((customer) => customer.id === "alex")?.telegramChatId === undefined
-          ? {}
-          : { alexTelegramChatId: current.customers.find((customer) => customer.id === "alex")!.telegramChatId! }),
-        ...((current.customers.find((customer) => customer.id === "sarah")?.phone
-          ?? options.config.sarahPhone) === undefined
-          ? {}
-          : { sarahPhone: (current.customers.find((customer) => customer.id === "sarah")?.phone
-            ?? options.config.sarahPhone)! }),
-      },
+      contactOverrides: Object.fromEntries(current.customers.flatMap((customer) => {
+        const contact = {
+          ...(customer.telegramChatId === undefined ? {} : { telegramChatId: customer.telegramChatId }),
+          ...(customer.phone === undefined ? {} : { phone: customer.phone }),
+        };
+        return Object.keys(contact).length === 0 ? [] : [[customer.id, contact]];
+      })),
     });
     reset.backboardThreads = current.backboardThreads;
     reset.processedEvents = current.processedEvents;

@@ -34,8 +34,10 @@ flowchart LR
     API --> ENGINE["Scheduling engine"]
     ENGINE --> DEMO["Seeded memory store"]
     ENGINE -. optional .-> MONGO["MongoDB"]
-    ENGINE -. optional .-> VOICE["ElevenLabs"]
-    ENGINE -. optional .-> CHAT["Telegram + Backboard"]
+    ENGINE -. opt-in .-> ROUTER["Outreach router"]
+    ROUTER -. typed adapter .-> VOICE["ElevenLabs"]
+    ROUTER -. typed adapter .-> CHAT["Telegram"]
+    ROUTER -. optional copy .-> COPY["Backboard"]
     API --> EVENTS["Server-sent events"]
     EVENTS --> WEB
 ```
@@ -44,6 +46,16 @@ The language model side can propose actions; the TypeScript domain layer owns
 identity, consent, availability, conflicts, offer expiry, and state mutation.
 That separation keeps the interesting scheduling logic deterministic even when
 the conversational integrations are not configured.
+
+Voice outreach sits behind a provider-neutral `VoiceCallProvider` contract.
+The scheduling workflow sends typed customer, offer, and appointment context;
+the ElevenLabs adapter alone translates that context into provider variables.
+Recipients come from persisted customer records rather than environment-coded
+demo people, and unreachable channels are skipped before an offer is consumed.
+
+Both `OUTREACH_WORKER_ENABLED` and `VOICE_OUTBOUND_ENABLED` default to `false`.
+Provider setup and demo-call scripts are dry runs unless an explicit execution
+flag is supplied, so adding credentials cannot place a call by accident.
 
 ## Tech stack
 

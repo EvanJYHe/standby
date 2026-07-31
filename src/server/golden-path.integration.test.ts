@@ -12,15 +12,16 @@ describe("Standby golden path", () => {
     const store = new InMemoryStore(createDemoState({
       now: "2026-07-18T16:00:00.000Z",
       timezone,
-      preservedIdentities: {
-        joshTelegramChatId: "1001",
-        alexTelegramChatId: "2002",
-        sarahPhone: "+14165550101",
+      contactOverrides: {
+        josh: { telegramChatId: "1001" },
+        alex: { telegramChatId: "2002" },
+        sarah: { phone: "+14165550101" },
       },
     }));
     const engine = new StandbyEngine(store);
     const deliveries: OfferDelivery[] = [];
     const sender: OfferSender = {
+      canReach: () => true,
       send: async (delivery) => {
         deliveries.push(delivery);
         return { providerMessageId: `provider-${delivery.offer.id}` };

@@ -21,12 +21,14 @@ export interface OfferDelivery {
 }
 
 export interface OfferSender {
+  canReach(customer: Customer, channel: Customer["contactPreference"]): boolean;
   send(delivery: OfferDelivery): Promise<{ providerMessageId: string }>;
 }
 
 export type WorkerRunResult =
   | { status: "idle" }
   | { status: "offer_delivered"; offerId: string; customerId: string }
+  | { status: "delivery_uncertain"; offerId: string; customerId: string }
   | { status: "delivery_failed"; offerId: string; customerId: string }
   | { status: "exhausted"; jobId: string };
 
@@ -46,7 +48,6 @@ interface WorkerOptions {
   idFactory?: () => string;
   leaseSeconds?: number;
   maxDeliveryAttempts?: number;
-  priorityVoiceCustomerId?: string;
 }
 
 export class RefillWorker {
@@ -75,19 +76,7 @@ export class RefillWorker {
     const snapshot = await this.store.read();
     const job = snapshot.refillJobs.find((candidate) => candidate.id === leasedJobId);
     if (job === undefined) return { status: "idle" };
-    const priorityCustomerId = this.options.priorityVoiceCustomerId;
-    const priorityHasAnotherActiveOffer = priorityCustomerId !== undefined
-      && !job.attemptedCustomerIds.includes(priorityCustomerId)
-      && snapshot.offers.some((offer) => (
-        offer.customerId === priorityCustomerId
-        && offer.jobId !== job.id
-        && ["pending", "delivered"].includes(offer.status)
-      ));
-    if (priorityHasAnotherActiveOffer) {
-      await this.deferLeasedJob(job.id, now.plus({ seconds: 15 }).toUTC().toISO()!, nowIso);
-      return { status: "idle" };
-    }
-    let candidates = rankRefillCandidates({
+    const candidates = rankRefillCandidates({
       job,
       customers: snapshot.customers,
       appointments: snapshot.appointments,
@@ -95,26 +84,19 @@ export class RefillWorker {
       settings: snapshot.settings,
       now: nowIso,
     });
-    const priorityCustomer = priorityCustomerId === undefined
-      ? undefined
-      : snapshot.customers.find((customer) => customer.id === priorityCustomerId);
-    if (
-      priorityCustomer !== undefined
-      && priorityCustomer.phone !== undefined
-      && priorityCustomer.replacementOffersEnabled !== false
-      && !job.attemptedCustomerIds.includes(priorityCustomer.id)
-    ) {
-      const rankedPriority = candidates.find((candidate) => candidate.customerId === priorityCustomer.id);
-      const priorityCandidate: RefillCandidate = rankedPriority === undefined
-        ? { customerId: priorityCustomer.id, kind: "past_customer", channel: "voice" }
-        : { ...rankedPriority, channel: "voice" };
-      candidates = [
-        priorityCandidate,
-        ...candidates.filter((candidate) => candidate.customerId !== priorityCustomer.id),
-      ];
-    }
-    const candidate = candidates[0];
+    const reachable = candidates.filter((candidate) => {
+      const customer = snapshot.customers.find((entry) => entry.id === candidate.customerId);
+      return customer !== undefined && this.sender.canReach(customer, candidate.channel);
+    });
+    const busyCustomerIds = new Set(snapshot.offers
+      .filter((offer) => offer.jobId !== job.id && ["pending", "delivered"].includes(offer.status))
+      .map((offer) => offer.customerId));
+    const candidate = reachable.find((entry) => !busyCustomerIds.has(entry.customerId));
     if (candidate === undefined) {
+      if (reachable.some((entry) => busyCustomerIds.has(entry.customerId))) {
+        await this.deferLeasedJob(job.id, now.plus({ seconds: 15 }).toUTC().toISO()!, nowIso);
+        return { status: "idle" };
+      }
       await this.markExhausted(job.id, nowIso);
       return { status: "exhausted", jobId: job.id };
     }
@@ -128,7 +110,8 @@ export class RefillWorker {
     }
 
     let lastError = "Provider delivery failed.";
-    for (let attempt = 1; attempt <= this.maxDeliveryAttempts; attempt += 1) {
+    const maxAttempts = offer.channel === "voice" ? 1 : this.maxDeliveryAttempts;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
         const response = await this.sender.send(delivery);
         await this.markDelivered(offer.id, attempt, response.providerMessageId, nowIso);
@@ -138,7 +121,12 @@ export class RefillWorker {
       }
     }
 
-    await this.recordDeliveryFailure(offer.id, this.maxDeliveryAttempts, nowIso, lastError);
+    if (offer.channel === "voice") {
+      await this.recordDeliveryUncertain(offer.id, maxAttempts, nowIso, lastError);
+      return { status: "delivery_uncertain", offerId: offer.id, customerId: offer.customerId };
+    }
+
+    await this.recordDeliveryFailure(offer.id, maxAttempts, nowIso, lastError);
     return { status: "delivery_failed", offerId: offer.id, customerId: offer.customerId };
   }
 
@@ -146,7 +134,10 @@ export class RefillWorker {
     const now = DateTime.fromISO(nowIso);
     const snapshot = await this.store.read();
     const hasExpiredOffer = snapshot.offers.some((offer) => {
-      if (offer.status !== "delivered" || DateTime.fromISO(offer.expiresAt).toMillis() > now.toMillis()) {
+      if (
+        !["pending", "delivered"].includes(offer.status)
+        || DateTime.fromISO(offer.expiresAt).toMillis() > now.toMillis()
+      ) {
         return false;
       }
       return snapshot.refillJobs.some(
@@ -159,7 +150,7 @@ export class RefillWorker {
 
     await this.store.transaction((state) => {
       for (const offer of state.offers) {
-        if (offer.status !== "delivered") continue;
+        if (!["pending", "delivered"].includes(offer.status)) continue;
         const expiresAt = DateTime.fromISO(offer.expiresAt);
         if (!expiresAt.isValid || expiresAt.toMillis() > now.toMillis()) continue;
         const job = state.refillJobs.find(
@@ -267,9 +258,7 @@ export class RefillWorker {
     const priorPastOffers = snapshot.offers.filter(
       (offer) => offer.jobId === leasedJob.id && offer.candidateKind === "past_customer",
     ).length;
-    const discountPercent = candidate.customerId === this.options.priorityVoiceCustomerId
-      ? 0
-      : candidate.kind === "past_customer"
+    const discountPercent = candidate.kind === "past_customer"
       ? calculatePastCustomerDiscount(priorPastOffers, snapshot.settings.maxDiscountPercent)
       : 0;
 
@@ -281,6 +270,20 @@ export class RefillWorker {
         || job.leaseOwner !== this.options.workerId
         || state.offers.some((item) => item.jobId === job.id && ["pending", "delivered"].includes(item.status))
       ) return undefined;
+      const customerHasActiveOutreach = state.offers.some((item) => (
+        item.customerId === candidate.customerId
+        && item.jobId !== job.id
+        && ["pending", "delivered"].includes(item.status)
+      ));
+      if (customerHasActiveOutreach) {
+        job.status = "pending";
+        job.retryAt = DateTime.fromISO(nowIso).plus({ seconds: 15 }).toUTC().toISO()!;
+        delete job.leaseOwner;
+        delete job.leaseExpiresAt;
+        job.updatedAt = nowIso;
+        job.version += 1;
+        return undefined;
+      }
 
       const offer: OutreachOffer = {
         id: offerId,
@@ -354,6 +357,10 @@ export class RefillWorker {
       offer.deliveryAttempts = attempts;
       offer.providerMessageId = providerMessageId;
       offer.updatedAt = nowIso;
+      if (offer.candidateKind === "past_customer") {
+        const customer = state.customers.find((candidate) => candidate.id === offer.customerId);
+        if (customer !== undefined) customer.lastOutreachAt = nowIso;
+      }
       if (job !== undefined) {
         job.timeline.push({
           type: "offer_delivered",
@@ -405,6 +412,40 @@ export class RefillWorker {
       state.events.push({
         id: randomUUID(),
         type: "offer.delivery_failed",
+        aggregateId: offer.id,
+        occurredAt: nowIso,
+        data: { error: errorMessage },
+      });
+    });
+  }
+
+  private async recordDeliveryUncertain(
+    offerId: string,
+    attempts: number,
+    nowIso: string,
+    errorMessage: string,
+  ): Promise<void> {
+    await this.store.transaction((state) => {
+      const offer = state.offers.find((candidate) => candidate.id === offerId);
+      if (offer === undefined || offer.status !== "pending") return;
+      const job = state.refillJobs.find((candidate) => candidate.id === offer.jobId);
+      offer.deliveryAttempts = attempts;
+      offer.updatedAt = nowIso;
+      if (job !== undefined) {
+        job.error = errorMessage;
+        job.updatedAt = nowIso;
+        job.version += 1;
+        job.timeline.push({
+          type: "delivery_uncertain",
+          at: nowIso,
+          message: `Standby could not confirm whether outreach to ${offer.customerId} started, so it will not contact anyone else yet.`,
+          customerId: offer.customerId,
+          offerId: offer.id,
+        });
+      }
+      state.events.push({
+        id: randomUUID(),
+        type: "offer.delivery_uncertain",
         aggregateId: offer.id,
         occurredAt: nowIso,
         data: { error: errorMessage },

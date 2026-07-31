@@ -4,9 +4,9 @@ import { InMemoryStore } from "../../domain/store.js";
 import type { OfferDelivery } from "../../domain/worker.js";
 import { createDemoState } from "../seed.js";
 import type { BackboardClient } from "./backboard.js";
-import type { ElevenLabsOutboundClient } from "./elevenlabs.js";
 import { ProviderOfferSender } from "./offer-sender.js";
 import type { TelegramTransport } from "./telegram.js";
+import type { VoiceCallProvider, VoiceCallRequest } from "./voice-agent.js";
 
 const now = "2026-07-18T16:00:00.000Z";
 
@@ -60,7 +60,7 @@ describe("ProviderOfferSender", () => {
     const store = new InMemoryStore(createDemoState({
       now,
       timezone: "America/Toronto",
-      preservedIdentities: { sarahPhone: "+14165550101" },
+      contactOverrides: { sarah: { phone: "+14165550101" } },
     }));
     const backboardCalls: string[] = [];
     const backboard = {
@@ -72,19 +72,20 @@ describe("ProviderOfferSender", () => {
         };
       },
     } as unknown as BackboardClient;
-    let outboundInput: Record<string, unknown> | undefined;
-    const elevenLabs = {
-      call: async (input: Record<string, unknown>) => {
+    let outboundInput: VoiceCallRequest | undefined;
+    const voice: VoiceCallProvider = {
+      provider: "elevenlabs",
+      startCall: async (input) => {
         outboundInput = input;
-        return { providerMessageId: "conversation-1", callSid: "CA123" };
+        return { provider: "elevenlabs", conversationId: "conversation-1", providerCallId: "CA123" };
       },
-    } as unknown as ElevenLabsOutboundClient;
+    };
     const telegram = { sendMessage: async () => ({ providerMessageId: "unused" }) };
     const sender = new ProviderOfferSender({
       store,
       backboard,
       telegram,
-      elevenLabs,
+      voice,
       voiceTokenSecret: "voice-token-secret-that-is-long-enough",
       clock: () => now,
     });
@@ -95,14 +96,16 @@ describe("ProviderOfferSender", () => {
     expect(backboardCalls[0]).toContain("Sarah");
     expect(backboardCalls[0]).toContain("Jeremy");
     expect(outboundInput).toMatchObject({
-      toNumber: "+14165550101",
-      dynamicVariables: {
-        offer_id: "offer-sarah",
-        customer_id: "sarah",
-        customer_name: "Sarah",
-        offer_message: "Hi Sarah — Jeremy had a 5 PM chair open up. Want it?",
-        appointment_summary: expect.stringContaining("current appointment"),
-        secret__actor_token: expect.any(String),
+      idempotencyKey: "offer-sarah",
+      to: "+14165550101",
+      context: {
+        customer: { id: "sarah", name: "Sarah" },
+        offer: {
+          id: "offer-sarah",
+          message: "Hi Sarah — Jeremy had a 5 PM chair open up. Want it?",
+        },
+        appointment: { summary: expect.stringContaining("current appointment") },
+        actorToken: expect.any(String),
       },
     });
     expect((await store.read()).backboardThreads).toContainEqual(expect.objectContaining({
@@ -117,13 +120,16 @@ describe("ProviderOfferSender", () => {
       offerId: "offer-sarah",
       deliveryState: "delivered",
     }));
+    expect((await store.read()).conversations).toContainEqual(expect.objectContaining({
+      providerConversationId: "elevenlabs:conversation-1",
+    }));
   });
 
   it("sends the Backboard-authored offer to the linked Telegram account", async () => {
     const store = new InMemoryStore(createDemoState({
       now,
       timezone: "America/Toronto",
-      preservedIdentities: { alexTelegramChatId: "2002" },
+      contactOverrides: { alex: { telegramChatId: "2002" } },
     }));
     const backboard = {
       reply: async () => ({ content: "Alex, 6 PM with Jeremy is yours if you want it.", threadId: "thread-alex" }),

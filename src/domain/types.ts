@@ -142,6 +142,7 @@ export interface TimelineEvent {
     | "offer_declined"
     | "offer_expired"
     | "delivery_failed"
+    | "delivery_uncertain"
     | "appointment_moved"
     | "opening_filled"
     | "opening_cancelled"

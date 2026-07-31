@@ -23,7 +23,7 @@ const config: AppConfig = {
   publicBaseUrl: "http://localhost:3000",
   timezone: "America/Toronto",
   demoMode: true,
-  voiceActorSecret: voiceSecret,
+  outreachWorkerEnabled: false,
   dataStore: "memory",
   mongoUri: undefined,
   mongoDatabase: "standby_test",
@@ -34,11 +34,17 @@ const config: AppConfig = {
   backboardApiKey: "backboard-key",
   backboardAssistantId: "assistant-1",
   backboardApiIp: undefined,
-  elevenLabsApiKey: "elevenlabs-key",
-  elevenLabsAgentId: "agent-1",
-  elevenLabsPhoneNumberId: "phone-1",
-  elevenLabsWebhookSecret: voiceSecret,
-  sarahPhone: "+14165550101",
+  voiceAgent: {
+    provider: "elevenlabs",
+    outboundEnabled: false,
+    apiKey: "elevenlabs-key",
+    agentId: "agent-1",
+    phoneNumberId: "phone-1",
+    webhookSecret: voiceSecret,
+    actorTokenSecret: "voice-actor-secret-that-is-at-least-32-characters",
+    baseUrl: "https://api.elevenlabs.io",
+    requestTimeoutMs: 20_000,
+  },
 };
 
 describe("provider webhook routes", () => {
@@ -51,7 +57,7 @@ describe("provider webhook routes", () => {
     store = new InMemoryStore(createDemoState({
       now,
       timezone: config.timezone,
-      preservedIdentities: { sarahPhone: "+14165550101" },
+      contactOverrides: { sarah: { phone: "+14165550101" } },
     }));
     const engine = new StandbyEngine(store);
     const toolbox = new SchedulingToolbox(store, engine, () => now);
@@ -74,10 +80,12 @@ describe("provider webhook routes", () => {
     });
     const elevenLabs = new ElevenLabsWebhookService({
       store,
-      engine,
       toolbox,
       agentId: "agent-1",
       webhookSecret: voiceSecret,
+      actorTokenSecret: config.voiceAgent.provider === "elevenlabs"
+        ? config.voiceAgent.actorTokenSecret
+        : "voice-actor-secret-that-is-at-least-32-characters",
       clock: () => now,
     });
     app = await buildServer({

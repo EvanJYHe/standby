@@ -3,57 +3,21 @@ import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { DateTime } from "luxon";
 import { z } from "zod";
 
-import type { StandbyEngine } from "../../domain/engine.js";
 import type { StandbyStore } from "../../domain/store.js";
 import type { SchedulingToolbox } from "./scheduling-tools.js";
+import {
+  e164PhoneSchema,
+  type VoiceCallProvider,
+  type VoiceCallRequest,
+  type VoiceCallReceipt,
+  voiceConversationKey,
+} from "./voice-agent.js";
+import {
+  createVoiceActorToken,
+  verifyVoiceActorToken,
+  type VoiceActorPayload,
+} from "./voice-session.js";
 import { recordConversationEvent } from "../conversations.js";
-
-interface VoiceActorPayload {
-  customerId?: string;
-  callId: string;
-  offerId?: string;
-  expiresAt: string;
-}
-
-function actorSignature(payload: string, secret: string): string {
-  return createHmac("sha256", secret).update(`voice-actor:${payload}`).digest("base64url");
-}
-
-export function createVoiceActorToken(payload: VoiceActorPayload, secret: string): string {
-  const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  return `${encoded}.${actorSignature(encoded, secret)}`;
-}
-
-export function verifyVoiceActorToken(token: string, secret: string, now: string): VoiceActorPayload {
-  const [payload, signature, extra] = token.split(".");
-  if (payload === undefined || signature === undefined || extra !== undefined) {
-    throw new Error("Invalid voice actor token.");
-  }
-  const supplied = Buffer.from(signature);
-  const expected = Buffer.from(actorSignature(payload, secret));
-  if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
-    throw new Error("Invalid voice actor token.");
-  }
-  try {
-    const parsed = z.object({
-      customerId: z.string().optional(),
-      callId: z.string(),
-      offerId: z.string().optional(),
-      expiresAt: z.string(),
-    }).parse(JSON.parse(Buffer.from(payload, "base64url").toString("utf8")));
-    if (DateTime.fromISO(parsed.expiresAt).toMillis() <= DateTime.fromISO(now).toMillis()) {
-      throw new Error("expired");
-    }
-    return {
-      ...(parsed.customerId === undefined ? {} : { customerId: parsed.customerId }),
-      callId: parsed.callId,
-      ...(parsed.offerId === undefined ? {} : { offerId: parsed.offerId }),
-      expiresAt: parsed.expiresAt,
-    };
-  } catch {
-    throw new Error("Invalid voice actor token.");
-  }
-}
 
 export function normalizePhone(value: string): string {
   const digits = value.replace(/\D/g, "");
@@ -93,10 +57,10 @@ const AVAILABILITY_FIRST_GREETING =
 
 interface ElevenLabsWebhookServiceOptions {
   store: StandbyStore;
-  engine: StandbyEngine;
   toolbox: SchedulingToolbox;
   agentId: string;
   webhookSecret: string;
+  actorTokenSecret: string;
   clock?: () => string;
 }
 
@@ -119,7 +83,7 @@ export class ElevenLabsWebhookService {
       const token = createVoiceActorToken({
         callId: input.call_sid,
         expiresAt: DateTime.fromISO(this.clock()).plus({ hours: 4 }).toUTC().toISO()!,
-      }, this.options.webhookSecret);
+      }, this.options.actorTokenSecret);
       return {
         type: "conversation_initiation_client_data" as const,
         dynamic_variables: {
@@ -156,7 +120,7 @@ export class ElevenLabsWebhookService {
       callId: input.call_sid,
       ...(activeOffer === undefined ? {} : { offerId: activeOffer.id }),
       expiresAt: DateTime.fromISO(this.clock()).plus({ hours: 4 }).toUTC().toISO()!,
-    }, this.options.webhookSecret);
+    }, this.options.actorTokenSecret);
     return {
       type: "conversation_initiation_client_data" as const,
       dynamic_variables: {
@@ -187,7 +151,7 @@ export class ElevenLabsWebhookService {
     try {
       actor = verifyVoiceActorToken(
         token,
-        this.options.webhookSecret,
+        this.options.actorTokenSecret,
         this.clock(),
       );
     } catch {
@@ -235,6 +199,7 @@ export class ElevenLabsWebhookService {
       ? dynamicCustomerId
       : offer?.customerId;
     const conversationDirection = offer === undefined ? "inbound" as const : "outbound" as const;
+    const providerConversationId = voiceConversationKey("elevenlabs", event.data.conversation_id);
 
     if (customerId !== undefined && event.type === "post_call_transcription") {
       const turns = event.data.transcript ?? [];
@@ -247,7 +212,7 @@ export class ElevenLabsWebhookService {
           customerId,
           channel: "voice",
           conversationDirection,
-          providerConversationId: event.data.conversation_id,
+          providerConversationId,
           providerEventId: `${eventId}:turn:${index}`,
           kind: "transcript",
           direction: turn.role === "agent" ? "outbound" : "inbound",
@@ -269,7 +234,7 @@ export class ElevenLabsWebhookService {
           customerId,
           channel: "voice",
           conversationDirection,
-          providerConversationId: event.data.conversation_id,
+          providerConversationId,
           providerEventId: `${eventId}:completed`,
           kind: "delivery",
           speaker: "system",
@@ -289,7 +254,7 @@ export class ElevenLabsWebhookService {
         customerId,
         channel: "voice",
         conversationDirection,
-        providerConversationId: event.data.conversation_id,
+        providerConversationId,
         providerEventId: `${eventId}:failure`,
         kind: "error",
         speaker: "system",
@@ -302,15 +267,41 @@ export class ElevenLabsWebhookService {
         }),
         occurredAt: DateTime.fromSeconds(event.event_timestamp).toUTC().toISO()!,
       });
-    }
-    if (offer !== undefined && ["pending", "delivered"].includes(offer.status)) {
-      await this.options.engine.respondToOffer({
-        actor: { provider: "elevenlabs", customerId: offer.customerId, providerEventId: eventId },
-        offerId: offer.id,
-        response: "decline",
-        confirmed: true,
-        now: this.clock(),
-      });
+      if (offer !== undefined && ["pending", "delivered"].includes(offer.status)) {
+        const failedAt = this.clock();
+        await this.options.store.transaction((mutable) => {
+          const activeOffer = mutable.offers.find((candidate) => candidate.id === offer.id);
+          if (activeOffer === undefined || !["pending", "delivered"].includes(activeOffer.status)) return;
+          activeOffer.status = "delivery_failed";
+          activeOffer.deliveryAttempts = Math.max(activeOffer.deliveryAttempts, 1);
+          activeOffer.updatedAt = failedAt;
+          const job = mutable.refillJobs.find((candidate) => candidate.id === activeOffer.jobId);
+          if (job !== undefined && job.currentOfferId === activeOffer.id) {
+            job.status = "pending";
+            delete job.currentOfferId;
+            delete job.leaseOwner;
+            delete job.leaseExpiresAt;
+            job.retryAt = failedAt;
+            job.error = `Voice call initiation failed: ${safeReason}.`;
+            job.updatedAt = failedAt;
+            job.version += 1;
+            job.timeline.push({
+              type: "delivery_failed",
+              at: failedAt,
+              message: `The call to ${activeOffer.customerId} did not start, so Standby continued the search.`,
+              customerId: activeOffer.customerId,
+              offerId: activeOffer.id,
+            });
+          }
+          mutable.events.push({
+            id: randomUUID(),
+            type: "offer.delivery_failed",
+            aggregateId: activeOffer.id,
+            occurredAt: failedAt,
+            data: { provider: "elevenlabs", reason: safeReason },
+          });
+        });
+      }
     }
     return { status: "processed" };
   }
@@ -324,7 +315,12 @@ export class ElevenLabsWebhookService {
       throw new Error("Invalid ElevenLabs signature.");
     }
     const timestampMillis = Number(timestamp) * 1000;
-    if (!Number.isFinite(timestampMillis) || Date.now() - timestampMillis > 30 * 60 * 1000) {
+    const nowMillis = DateTime.fromISO(this.clock()).toMillis();
+    if (
+      !Number.isFinite(timestampMillis)
+      || !Number.isFinite(nowMillis)
+      || Math.abs(nowMillis - timestampMillis) > 30 * 60 * 1000
+    ) {
       throw new Error("Invalid ElevenLabs signature.");
     }
     const expectedHex = createHmac("sha256", this.options.webhookSecret)
@@ -347,25 +343,29 @@ interface ElevenLabsOutboundClientOptions {
   apiKey: string;
   agentId: string;
   phoneNumberId: string;
+  baseUrl?: string;
+  timeoutMs?: number;
   fetchImpl?: typeof fetch;
 }
 
-interface OutboundCallInput {
-  toNumber: string;
-  dynamicVariables: Record<string, string | number | boolean>;
-}
-
-export class ElevenLabsOutboundClient {
+export class ElevenLabsOutboundClient implements VoiceCallProvider {
+  readonly provider = "elevenlabs" as const;
   private readonly fetchImpl: typeof fetch;
+  private readonly baseUrl: string;
+  private readonly timeoutMs: number;
 
   constructor(private readonly options: ElevenLabsOutboundClientOptions) {
     this.fetchImpl = options.fetchImpl ?? fetch;
+    this.baseUrl = options.baseUrl ?? "https://api.elevenlabs.io";
+    this.timeoutMs = options.timeoutMs ?? 20_000;
   }
 
-  async call(input: OutboundCallInput): Promise<{ providerMessageId: string; callSid: string | null }> {
+  async startCall(request: VoiceCallRequest): Promise<VoiceCallReceipt> {
+    const toNumber = e164PhoneSchema.parse(request.to);
+    const { context } = request;
     let response: Response;
     try {
-      response = await this.fetchImpl("https://api.elevenlabs.io/v1/convai/twilio/outbound-call", {
+      response = await this.fetchImpl(new URL("/v1/convai/twilio/outbound-call", this.baseUrl), {
         method: "POST",
         headers: {
           "xi-api-key": this.options.apiKey,
@@ -374,13 +374,27 @@ export class ElevenLabsOutboundClient {
         body: JSON.stringify({
           agent_id: this.options.agentId,
           agent_phone_number_id: this.options.phoneNumberId,
-          to_number: normalizePhone(input.toNumber),
+          to_number: toNumber,
           conversation_initiation_client_data: {
-            dynamic_variables: input.dynamicVariables,
+            dynamic_variables: {
+              request_id: request.idempotencyKey,
+              offer_id: context.offer.id,
+              customer_id: context.customer.id,
+              customer_name: context.customer.name,
+              barber_name: context.appointment.barberName,
+              service_name: context.appointment.serviceName,
+              old_time: context.appointment.currentTime ?? "",
+              proposed_time: context.appointment.proposedTime,
+              discount_percent: context.offer.discountPercent,
+              offer_message: context.offer.message,
+              appointment_summary: context.appointment.summary,
+              secret__actor_token: context.actorToken,
+              timezone: context.timezone,
+            },
           },
           call_recording_enabled: false,
         }),
-        signal: AbortSignal.timeout(20_000),
+        signal: AbortSignal.timeout(this.timeoutMs),
       });
     } catch {
       throw new Error("ElevenLabs call initiation failed.");
@@ -389,14 +403,17 @@ export class ElevenLabsOutboundClient {
     const parsed = z.object({
       success: z.boolean(),
       conversation_id: z.string().nullable(),
-      callSid: z.string().nullable(),
+      callSid: z.string().nullable().optional(),
     }).passthrough().safeParse(await response.json().catch(() => ({})));
     if (!parsed.success || !parsed.data.success || parsed.data.conversation_id === null) {
       throw new Error("ElevenLabs call initiation failed.");
     }
     return {
-      providerMessageId: parsed.data.conversation_id,
-      callSid: parsed.data.callSid,
+      provider: this.provider,
+      conversationId: parsed.data.conversation_id,
+      ...(parsed.data.callSid === undefined || parsed.data.callSid === null
+        ? {}
+        : { providerCallId: parsed.data.callSid }),
     };
   }
 }
