@@ -500,16 +500,21 @@ export function LandingPage() {
                   )}
                   key={card.number}
                 >
-                  <span aria-hidden="true" className="flex h-11 items-center gap-3 text-landing-ink">
-                    <card.icon className="h-7 w-7" strokeWidth={1.55} />
-                    <span className="h-[2px] w-7 bg-landing-coral" />
-                  </span>
-                  <h3 className="mb-[11px] mt-[23px] text-[25px] font-semibold tracking-[-0.04em]">
-                    {card.title}
-                  </h3>
-                  <p className="m-0 max-w-[320px] text-[14px] leading-[1.55] text-landing-muted">
-                    {card.copy}
-                  </p>
+                  <div className="flex items-start justify-between gap-6">
+                    <div className="min-w-0">
+                      <h3 className="m-0 text-[25px] font-semibold tracking-[-0.04em]">
+                        {card.title}
+                      </h3>
+                      <p className="mb-0 mt-[13px] max-w-[340px] text-[14px] leading-[1.55] text-landing-muted">
+                        {card.copy}
+                      </p>
+                    </div>
+                    <card.icon
+                      aria-hidden="true"
+                      className="h-8 w-8 shrink-0 text-landing-ink"
+                      strokeWidth={1.5}
+                    />
+                  </div>
                   <figure className="absolute bottom-[26px] left-[25px] right-[25px] m-0 h-[185px] overflow-hidden rounded-[8px] border border-[rgba(16,23,34,0.08)] bg-[#e6e5e1]">
                     <img
                       alt={card.alt}
