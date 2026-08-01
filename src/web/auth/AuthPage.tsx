@@ -1,13 +1,5 @@
 import { useState, type FormEvent } from "react";
-import {
-  ArrowLeft,
-  ArrowRight,
-  CalendarCheck2,
-  CalendarX2,
-  ChevronDown,
-  Laptop,
-  PhoneCall,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, Laptop } from "lucide-react";
 
 export interface LocalProfileInput {
   name: string;
@@ -39,58 +31,10 @@ function Brand() {
   );
 }
 
-function RecoveryPreview() {
-  const steps = [
-    {
-      icon: CalendarX2,
-      title: "A cancellation appears",
-      detail: "5:00 PM with Jeremy",
-    },
-    {
-      icon: PhoneCall,
-      title: "Standby calls the waitlist",
-      detail: "Sarah answers",
-    },
-    {
-      icon: CalendarCheck2,
-      title: "The opening is filled",
-      detail: "Confirmed in 1m 48s",
-    },
-  ] as const;
-
-  return (
-    <div
-      aria-label="Example appointment recovery"
-      className="mt-10 max-w-[640px] overflow-hidden rounded-[14px] border border-[rgba(16,23,34,0.1)] bg-landing-panel shadow-[0_18px_50px_rgba(16,23,34,0.08)]"
-    >
-      <div className="flex items-center justify-between border-b border-[rgba(16,23,34,0.08)] px-5 py-4">
-        <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-landing-muted">
-          Cancellation recovery
-        </span>
-        <span className="rounded-full bg-[#e7efe6] px-2.5 py-1 text-[10px] font-bold text-[#3b5941]">
-          Filled
-        </span>
-      </div>
-      <div className="grid grid-cols-3 divide-x divide-[rgba(16,23,34,0.08)] max-[1100px]:grid-cols-1 max-[1100px]:divide-x-0 max-[1100px]:divide-y">
-        {steps.map((step) => {
-          const Icon = step.icon;
-          return (
-            <div className="min-w-0 px-5 py-[18px]" key={step.title}>
-              <Icon aria-hidden="true" className="mb-4 h-5 w-5 text-landing-ink" strokeWidth={1.7} />
-              <strong className="block text-[13px] tracking-[-0.01em]">{step.title}</strong>
-              <span className="mt-1 block text-[12px] text-landing-muted">{step.detail}</span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 export function AuthPage({ onCreateLocal, onEnterDemo }: AuthPageProps) {
-  const [demoDetailsOpen, setDemoDetailsOpen] = useState(false);
   const [submitting, setSubmitting] = useState<"profile" | "demo">();
-  const [error, setError] = useState<string>();
+  const [profileError, setProfileError] = useState<string>();
+  const [demoError, setDemoError] = useState<string>();
 
   const handleProfileSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -101,22 +45,22 @@ export function AuthPage({ onCreateLocal, onEnterDemo }: AuthPageProps) {
     if (name === "" || email === "") return;
 
     setSubmitting("profile");
-    setError(undefined);
+    setProfileError(undefined);
     try {
       await onCreateLocal({ name, email });
     } catch {
-      setError("That local profile could not be opened. Please try again.");
+      setProfileError("That local profile could not be opened. Please try again.");
       setSubmitting(undefined);
     }
   };
 
   const handleDemo = async () => {
     setSubmitting("demo");
-    setError(undefined);
+    setDemoError(undefined);
     try {
       await onEnterDemo();
     } catch {
-      setError("The demo workspace could not be opened. Please try again.");
+      setDemoError("The demo workspace could not be opened. Please try again.");
       setSubmitting(undefined);
     }
   };
@@ -153,8 +97,34 @@ export function AuthPage({ onCreateLocal, onEnterDemo }: AuthPageProps) {
           <p className="mb-0 mt-6 max-w-[590px] text-[17px] leading-[1.6] tracking-[-0.01em] text-landing-muted max-[600px]:text-[15px]">
             Create a profile for this browser, or look around the sample workspace first.
           </p>
-          <div className="max-[900px]:hidden">
-            <RecoveryPreview />
+          <div className="mt-10 max-w-[640px] rounded-[14px] border border-[rgba(16,23,34,0.1)] bg-landing-panel p-6 shadow-[0_18px_50px_rgba(16,23,34,0.08)] max-[600px]:mt-8 max-[600px]:rounded-[10px] max-[600px]:p-5">
+            <p className="m-0 text-[10px] font-bold uppercase tracking-[0.16em] text-landing-muted">
+              Demo workspace
+            </p>
+            <div className="mt-3 flex items-end justify-between gap-6 max-[600px]:flex-col max-[600px]:items-stretch max-[600px]:gap-5">
+              <div>
+                <h2 className="m-0 text-[22px] font-semibold tracking-[-0.035em]">
+                  Want to look around first?
+                </h2>
+                <p className="mb-0 mt-1.5 text-[13px] leading-[1.5] text-landing-muted">
+                  Sample calendar and customers. No real calls.
+                </p>
+              </div>
+              <button
+                className="inline-flex h-11 flex-none items-center justify-center gap-2 rounded-[8px] border border-landing-coral bg-landing-coral px-5 text-[11px] font-bold uppercase tracking-[0.08em] text-landing-ink transition-colors hover:bg-[#ff8168] disabled:cursor-wait disabled:opacity-60"
+                disabled={busy}
+                onClick={() => void handleDemo()}
+                type="button"
+              >
+                {submitting === "demo" ? "Opening demo…" : "Enter demo"}
+                {submitting === "demo" ? null : <ArrowRight aria-hidden="true" className="h-4 w-4" />}
+              </button>
+            </div>
+            {demoError === undefined ? null : (
+              <p aria-live="polite" className="mb-0 mt-4 rounded-[8px] bg-[#fff1ed] px-3 py-2.5 text-[12px] leading-5 text-[#9f402f]" role="alert">
+                {demoError}
+              </p>
+            )}
           </div>
         </section>
 
@@ -212,51 +182,11 @@ export function AuthPage({ onCreateLocal, onEnterDemo }: AuthPageProps) {
             <span>Stored only in this browser. No online account is created and no email is sent.</span>
           </p>
 
-          {error === undefined ? null : (
+          {profileError === undefined ? null : (
             <p aria-live="polite" className="mt-4 rounded-[8px] bg-[#fff1ed] px-3 py-2.5 text-[12px] leading-5 text-[#9f402f]" role="alert">
-              {error}
+              {profileError}
             </p>
           )}
-
-          <div className="my-6 h-px bg-[rgba(16,23,34,0.1)]" />
-
-          <button
-            aria-controls="standby-demo-details"
-            aria-expanded={demoDetailsOpen}
-            className="flex w-full items-center justify-between gap-4 rounded-[8px] py-1 text-left text-[14px] font-semibold text-landing-ink"
-            disabled={busy}
-            onClick={() => setDemoDetailsOpen((open) => !open)}
-            type="button"
-          >
-            <span>
-              Just looking?
-              <span className="mt-1 block text-[12px] font-normal text-landing-muted">See what is in the demo</span>
-            </span>
-            <ChevronDown
-              aria-hidden="true"
-              className={`h-5 w-5 flex-none text-landing-muted transition-transform ${demoDetailsOpen ? "rotate-180" : ""}`}
-            />
-          </button>
-
-          <div
-            className={demoDetailsOpen ? "mt-4" : "hidden"}
-            id="standby-demo-details"
-          >
-            <div className="rounded-[9px] border border-[rgba(16,23,34,0.09)] bg-white p-4">
-              <p className="m-0 text-[13px] leading-[1.55] text-landing-muted">
-                A seeded Toronto barbershop with a calendar, sample customers, and example agent activity. Changes may reset. Public demo mode does not place real calls.
-              </p>
-              <button
-                className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[8px] border border-landing-coral bg-landing-coral px-4 text-[12px] font-bold uppercase tracking-[0.08em] text-landing-ink transition-[background-color,transform,box-shadow] hover:-translate-y-0.5 hover:bg-[#ff8168] hover:shadow-[0_8px_18px_rgba(145,58,42,0.16)] disabled:cursor-wait disabled:translate-y-0 disabled:opacity-60"
-                disabled={busy}
-                onClick={() => void handleDemo()}
-                type="button"
-              >
-                {submitting === "demo" ? "Opening demo…" : "Enter demo workspace"}
-                {submitting === "demo" ? null : <ArrowRight aria-hidden="true" className="h-4 w-4" />}
-              </button>
-            </div>
-          </div>
         </section>
       </main>
     </div>

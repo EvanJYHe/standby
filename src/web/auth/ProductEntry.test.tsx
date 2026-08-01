@@ -57,15 +57,14 @@ describe("ProductEntry", () => {
     expect(screen.queryByRole("heading", { name: "Standby workspace" })).not.toBeInTheDocument();
   });
 
-  it("explains the sample data before opening a tab-scoped demo", async () => {
+  it("opens the clearly labelled sample workspace as a tab-scoped demo", async () => {
     const user = userEvent.setup();
     render(<ProductEntry />);
 
-    await user.click(screen.getByRole("button", { name: /Just looking/i }));
-    expect(screen.getByText(/seeded Toronto barbershop/i)).toBeInTheDocument();
-    expect(screen.getByText(/does not place real calls/i)).toBeInTheDocument();
+    expect(screen.getByText(/Sample calendar and customers/i)).toBeInTheDocument();
+    expect(screen.getByText(/No real calls/i)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Enter demo workspace" }));
+    await user.click(screen.getByRole("button", { name: "Enter demo" }));
     expect(await screen.findByRole("heading", { name: "Standby workspace" })).toBeInTheDocument();
     expect(screen.getByText("Demo session")).toBeInTheDocument();
     expect(window.sessionStorage.length).toBe(1);
