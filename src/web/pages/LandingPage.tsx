@@ -631,12 +631,12 @@ export function LandingPage() {
               ))}
             </div>
 
-            <div className="landing-reveal mx-auto mt-[70px] grid max-w-[1300px] grid-cols-[290px_minmax(0,1fr)] items-center gap-12 max-[1050px]:max-w-[860px] max-[1050px]:grid-cols-1 max-[1050px]:gap-[34px] max-[720px]:mt-14 max-[720px]:gap-5 max-[720px]:rounded-[14px] max-[720px]:border max-[720px]:border-[rgba(255,255,255,0.12)] max-[720px]:bg-[rgba(255,255,255,0.025)] max-[720px]:p-5">
-              <div className="flex items-center gap-6 max-[720px]:order-1 max-[720px]:gap-4">
+            <div className="landing-reveal mx-auto mt-[70px] grid max-w-[1300px] grid-cols-[290px_minmax(0,1fr)] items-center gap-12 max-[1050px]:max-w-[860px] max-[1050px]:grid-cols-1 max-[1050px]:gap-[34px] max-[720px]:mt-14 max-[720px]:gap-6 max-[720px]:rounded-[14px] max-[720px]:border max-[720px]:border-[rgba(255,255,255,0.12)] max-[720px]:bg-[rgba(255,255,255,0.025)] max-[720px]:p-6">
+              <div className="flex items-center gap-6 max-[720px]:gap-5">
                 <img
                   alt=""
                   aria-hidden="true"
-                  className="h-[164px] w-[164px] shrink-0 rounded-full border-2 border-[rgba(255,255,255,0.45)] object-cover shadow-[0_0_0_1px_rgba(255,255,255,0.12)] max-[720px]:h-[76px] max-[720px]:w-[76px]"
+                  className="h-[164px] w-[164px] shrink-0 rounded-full border-2 border-[rgba(255,255,255,0.45)] object-cover shadow-[0_0_0_1px_rgba(255,255,255,0.12)] max-[720px]:h-28 max-[720px]:w-28"
                   decoding="async"
                   height="256"
                   loading="lazy"
@@ -644,8 +644,8 @@ export function LandingPage() {
                   width="256"
                 />
                 <span>
-                  <strong className="mb-[9px] block text-[22px] max-[720px]:mb-1.5 max-[720px]:text-[19px]">Aaron Su</strong>
-                  <span className="block text-[13px] uppercase tracking-[0.14em] text-[#919ca9] max-[720px]:text-[11px]">
+                  <strong className="mb-[9px] block text-[22px] max-[720px]:mb-2 max-[720px]:text-[22px]">Aaron Su</strong>
+                  <span className="block text-[13px] uppercase tracking-[0.14em] text-[#919ca9] max-[720px]:text-[12px]">
                     The Don
                   </span>
                 </span>
@@ -653,7 +653,7 @@ export function LandingPage() {
               <blockquote
                 className={cn(
                   serifClass,
-                  "m-0 text-[clamp(31px,3.5vw,51px)] italic leading-[1.08] tracking-[-0.04em] max-[720px]:order-2 max-[720px]:border-t max-[720px]:border-[rgba(255,255,255,0.12)] max-[720px]:pt-5 max-[720px]:text-[clamp(28px,7.7vw,34px)] max-[720px]:leading-[1.14] max-[720px]:tracking-[-0.025em]",
+                  "m-0 text-[clamp(31px,3.5vw,51px)] italic leading-[1.08] tracking-[-0.04em] max-[720px]:border-t max-[720px]:border-[rgba(255,255,255,0.12)] max-[720px]:pt-6 max-[720px]:text-[clamp(28px,7.7vw,34px)] max-[720px]:leading-[1.14] max-[720px]:tracking-[-0.025em]",
                 )}
               >
                 “Wowie, this is so awesome sauce!!! Anyways, have you guys heard of{" "}
