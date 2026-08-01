@@ -16,7 +16,7 @@ import {
 import { cn } from "../lib/cn.js";
 
 const shellClass =
-  "mx-auto w-[min(1400px,calc(100%-40px))] max-[720px]:w-[calc(100%-24px)]";
+  "mx-auto w-[calc(100%_-_40px)] max-w-[1400px] max-[380px]:w-[calc(100%_-_32px)]";
 
 const buttonClass =
   "inline-flex min-h-[50px] items-center justify-center rounded-[8px] border px-[22px] text-[12px] font-bold uppercase tracking-[0.08em] transition-[color,background-color,border-color,transform,box-shadow] duration-200 hover:-translate-y-0.5 focus-visible:outline-[3px_solid_rgba(243,111,86,0.42)] focus-visible:outline-offset-4 max-[720px]:min-h-[46px]";
@@ -576,15 +576,15 @@ export function LandingPage() {
         </section>
 
         <section
-          className="landing-dark-grid relative overflow-hidden bg-landing-ink py-[108px] text-[#f7f7f3] max-[720px]:py-[82px]"
+          className="landing-dark-grid relative overflow-hidden bg-landing-ink py-[108px] text-[#f7f7f3] max-[720px]:py-[72px]"
           id="impact"
         >
           <div className={cn(shellClass, "relative z-[2]")}>
-            <div className="landing-reveal mx-auto mb-[58px] max-w-[1220px] text-center max-[720px]:mb-12">
-              <p className={cn(eyebrowClass, "justify-center text-[#aab3c0]")}>
+            <div className="landing-reveal mx-auto mb-[58px] max-w-[1220px] text-center max-[720px]:mb-11 max-[720px]:text-left">
+              <p className={cn(eyebrowClass, "justify-center text-[#aab3c0] max-[720px]:justify-start")}>
                 Less empty time. More momentum.
               </p>
-              <h2 className="mb-[18px] mt-5 text-[clamp(52px,5.6vw,86px)] font-normal leading-[0.9] tracking-[-0.062em]">
+              <h2 className="mb-[18px] mt-5 text-[clamp(52px,5.6vw,86px)] font-normal leading-[0.9] tracking-[-0.062em] max-[720px]:mb-5 max-[720px]:mt-[18px] max-[720px]:text-[clamp(46px,13.2vw,58px)] max-[720px]:leading-[0.94] max-[720px]:tracking-[-0.052em]">
                 <span className="block whitespace-nowrap max-[720px]:whitespace-normal">
                   Your calendar is inventory.
                 </span>
@@ -592,7 +592,7 @@ export function LandingPage() {
                   Protect every hour.
                 </em>
               </h2>
-              <p className="mx-auto my-0 w-[min(680px,100%)] text-[16px] leading-[1.55] text-[#aeb7c3]">
+              <p className="mx-auto my-0 w-[min(680px,100%)] text-[16px] leading-[1.55] text-[#aeb7c3] max-[720px]:mx-0 max-[720px]:text-[15px] max-[720px]:leading-[1.65]">
                 Fewer empty hours. More money, probably. We ran out of tasteful ways to
                 say that two sections ago.
               </p>
@@ -606,7 +606,7 @@ export function LandingPage() {
               ].map(([value, label], index) => (
                 <div
                   className={cn(
-                    "min-h-[190px] border-r border-[rgba(255,255,255,0.13)] px-9 py-8 last:border-r-0 max-[720px]:min-h-[170px] max-[720px]:border-b max-[720px]:border-r-0 max-[720px]:px-1 max-[720px]:py-[34px] max-[720px]:last:border-b-0",
+                    "min-h-[190px] border-r border-[rgba(255,255,255,0.13)] px-9 py-8 last:border-r-0 max-[720px]:flex max-[720px]:min-h-0 max-[720px]:items-center max-[720px]:justify-between max-[720px]:gap-6 max-[720px]:border-b max-[720px]:border-r-0 max-[720px]:px-4 max-[720px]:py-8 max-[720px]:last:border-b-0 max-[380px]:gap-4 max-[380px]:px-3",
                     index === 2 && "border-r-0",
                   )}
                   key={value}
@@ -614,24 +614,24 @@ export function LandingPage() {
                   <strong
                     className={cn(
                       serifClass,
-                      "mb-4 block text-[clamp(54px,5vw,78px)] font-normal italic tracking-[-0.055em] text-landing-coral",
+                      "mb-4 block text-[clamp(54px,5vw,78px)] font-normal italic tracking-[-0.055em] text-landing-coral max-[720px]:mb-0 max-[720px]:shrink-0 max-[720px]:whitespace-nowrap max-[720px]:text-[clamp(46px,13vw,58px)] max-[380px]:text-[44px]",
                     )}
                   >
                     {value}
                   </strong>
-                  <span className="block max-w-60 text-[13px] leading-[1.55] text-[#b2bbc6]">
+                  <span className="block max-w-60 text-[13px] leading-[1.55] text-[#b2bbc6] max-[720px]:max-w-[155px] max-[720px]:text-right max-[720px]:leading-[1.6]">
                     {label}
                   </span>
                 </div>
               ))}
             </div>
 
-            <div className="landing-reveal mx-auto mt-[70px] grid max-w-[1300px] grid-cols-[290px_minmax(0,1fr)] items-center gap-12 max-[1050px]:max-w-[860px] max-[1050px]:grid-cols-1 max-[1050px]:gap-[34px] max-[720px]:mt-[60px]">
-              <div className="flex items-center gap-6">
+            <div className="landing-reveal mx-auto mt-[70px] grid max-w-[1300px] grid-cols-[290px_minmax(0,1fr)] items-center gap-12 max-[1050px]:max-w-[860px] max-[1050px]:grid-cols-1 max-[1050px]:gap-[34px] max-[720px]:mt-14 max-[720px]:gap-7">
+              <div className="flex items-center gap-6 max-[720px]:order-2 max-[720px]:gap-[18px]">
                 <img
                   alt=""
                   aria-hidden="true"
-                  className="h-[164px] w-[164px] shrink-0 rounded-full border-2 border-[rgba(255,255,255,0.45)] object-cover shadow-[0_0_0_1px_rgba(255,255,255,0.12)] max-[720px]:h-[112px] max-[720px]:w-[112px]"
+                  className="h-[164px] w-[164px] shrink-0 rounded-full border-2 border-[rgba(255,255,255,0.45)] object-cover shadow-[0_0_0_1px_rgba(255,255,255,0.12)] max-[720px]:h-[88px] max-[720px]:w-[88px]"
                   decoding="async"
                   height="256"
                   loading="lazy"
@@ -639,8 +639,8 @@ export function LandingPage() {
                   width="256"
                 />
                 <span>
-                  <strong className="mb-[9px] block text-[22px]">Aaron Su</strong>
-                  <span className="block text-[13px] uppercase tracking-[0.14em] text-[#919ca9]">
+                  <strong className="mb-[9px] block text-[22px] max-[720px]:mb-1.5 max-[720px]:text-[19px]">Aaron Su</strong>
+                  <span className="block text-[13px] uppercase tracking-[0.14em] text-[#919ca9] max-[720px]:text-[11px]">
                     The Don
                   </span>
                 </span>
@@ -648,7 +648,7 @@ export function LandingPage() {
               <blockquote
                 className={cn(
                   serifClass,
-                  "m-0 text-[clamp(31px,3.5vw,51px)] italic leading-[1.08] tracking-[-0.04em]",
+                  "m-0 text-[clamp(31px,3.5vw,51px)] italic leading-[1.08] tracking-[-0.04em] max-[720px]:order-1 max-[720px]:text-[clamp(31px,9vw,38px)] max-[720px]:leading-[1.12] max-[720px]:tracking-[-0.03em]",
                 )}
               >
                 “Wowie, this is so awesome sauce!!! Anyways, have you guys heard of{" "}
