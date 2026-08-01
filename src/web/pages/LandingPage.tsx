@@ -192,20 +192,15 @@ function MobileRecoveryDemo({ step }: { step: number }) {
       aria-label="Animated cancellation recovery example"
       className="hidden overflow-hidden rounded-[12px] border border-[rgba(16,23,34,0.12)] bg-landing-panel text-left shadow-[0_16px_38px_rgba(24,31,40,0.09)] max-[1050px]:mx-auto max-[1050px]:block max-[1050px]:w-[min(560px,100%)]"
     >
-      <div className="flex items-center justify-between border-b border-[rgba(16,23,34,0.08)] px-[18px] py-[14px]">
-        <p className="m-0 text-[10px] font-extrabold uppercase tracking-[0.16em] text-landing-muted">
-          Cancellation recovery
-        </p>
-        <span
+      <div className="border-b border-[rgba(16,23,34,0.08)] px-5 py-5 max-[380px]:px-4">
+        <h2
           className={cn(
-            "rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.09em] transition-colors duration-[420ms]",
-            recovered
-              ? "bg-[#e6efe5] text-[#3f6248]"
-              : "bg-[#fde8e2] text-[#9a4635]",
+            serifClass,
+            "m-0 text-[27px] font-normal italic leading-[1.12] tracking-[-0.035em]",
           )}
         >
-          {recovered ? "Filled" : "In progress"}
-        </span>
+          Cancellation detected. Voice agent already calling.
+        </h2>
       </div>
 
       <div className="flex min-h-[238px] flex-col justify-center px-5 py-6 text-center max-[380px]:px-4">
