@@ -7,8 +7,8 @@ const normalizedPath = window.location.pathname.replace(/\/+$/, "") || "/";
 const isProductRoute = normalizedPath === "/app";
 const RoutedApp = isProductRoute
   ? lazy(async () => {
-    const module = await import("./App.js");
-    return { default: module.DashboardApp };
+    const module = await import("./auth/ProductEntry.js");
+    return { default: module.ProductEntry };
   })
   : lazy(async () => {
     const module = await import("./pages/LandingPage.js");

@@ -116,6 +116,49 @@ describe("DashboardApp shell", () => {
     expect(client.getCalendarRange).toHaveBeenCalledWith("2026-07-20", "2026-07-20");
   });
 
+  it("shows a local profile and signs out from the compact account menu", async () => {
+    const user = userEvent.setup();
+    const onSignOut = vi.fn();
+    render(
+      <DashboardApp
+        api={api()}
+        eventSourceFactory={() => undefined}
+        initialDate="2026-07-20"
+        onSignOut={onSignOut}
+        session={{ kind: "local", name: "Evan He", email: "evan@example.com" }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Evan He menu" }));
+    expect(screen.getByRole("menu", { name: "Workspace account" })).toBeInTheDocument();
+    expect(screen.getByText("Evan He")).toBeInTheDocument();
+    expect(screen.getByText("evan@example.com")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("menuitem", { name: "Sign out" }));
+    expect(onSignOut).toHaveBeenCalledTimes(1);
+  });
+
+  it("labels and leaves a demo workspace from the same account menu", async () => {
+    const user = userEvent.setup();
+    const onSignOut = vi.fn();
+    render(
+      <DashboardApp
+        api={api()}
+        eventSourceFactory={() => undefined}
+        initialDate="2026-07-20"
+        onSignOut={onSignOut}
+        session={{ kind: "demo" }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Demo workspace menu" }));
+    expect(screen.getByText("Demo workspace")).toBeInTheDocument();
+    expect(screen.getByText("Sample workspace")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("menuitem", { name: "Leave demo" }));
+    expect(onSignOut).toHaveBeenCalledTimes(1);
+  });
+
   it("queries the authoritative range for each calendar view", async () => {
     const user = userEvent.setup();
     const client = api();

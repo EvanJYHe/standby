@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DateTime } from "luxon";
 
 import { defaultApi } from "./api.js";
+import type { ProductSession } from "./auth/session.js";
 import {
   AgentIcon,
   CalendarIcon,
@@ -22,6 +23,8 @@ interface DashboardAppProps {
   api?: StandbyApi;
   initialDate?: string;
   eventSourceFactory?: (url: string) => EventSourceLike | undefined;
+  session?: ProductSession;
+  onSignOut?: () => void | Promise<void>;
 }
 
 const defaultEventSourceFactory = (url: string): EventSourceLike | undefined => {
@@ -35,6 +38,94 @@ const destinations = [
   { id: "customers" as const, label: "Customers", icon: CustomersIcon },
 ];
 
+function SessionMenu({
+  session,
+  onSignOut,
+}: {
+  session: ProductSession;
+  onSignOut: (() => void | Promise<void>) | undefined;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const demo = session.kind === "demo";
+  const name = demo ? "Demo workspace" : session.name;
+  const email = demo ? "Sample workspace" : session.email;
+  const initial = demo
+    ? "D"
+    : session.name.trim().charAt(0).toLocaleUpperCase() || "S";
+
+  useEffect(() => {
+    if (!open) return;
+
+    const closeOnOutsidePress = (event: PointerEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setOpen(false);
+      triggerRef.current?.focus();
+    };
+
+    document.addEventListener("pointerdown", closeOnOutsidePress);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePress);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <button
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label={`${name} menu`}
+        className={cn(
+          "grid h-10 w-10 place-items-center rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a64533]",
+          open ? "bg-[#fff1ed]" : "hover:bg-[#f1f3f4]",
+        )}
+        onClick={() => setOpen((current) => !current)}
+        ref={triggerRef}
+        type="button"
+      >
+        <span
+          aria-hidden="true"
+          className="grid h-8 w-8 place-items-center rounded-full bg-[#17202d] text-[12px] font-bold text-white"
+        >
+          {initial}
+        </span>
+      </button>
+
+      {open ? (
+        <div
+          aria-label="Workspace account"
+          className="absolute right-0 top-[calc(100%_+_8px)] z-50 w-[250px] overflow-hidden rounded-[10px] border border-[#e0e3e7] bg-white shadow-[0_12px_30px_rgba(16,23,34,0.14)]"
+          role="menu"
+        >
+          <div className="border-b border-[#eceef0] px-4 py-3.5" role="none">
+            <strong className="block truncate text-[13px] font-semibold text-ink">{name}</strong>
+            <span className="mt-0.5 block truncate text-[12px] text-muted">{email}</span>
+          </div>
+          {onSignOut === undefined ? null : (
+            <button
+              className="flex min-h-11 w-full items-center px-4 text-left text-[13px] font-medium text-ink transition-colors hover:bg-[#f7f8f9] focus-visible:bg-[#f7f8f9] focus-visible:outline-none"
+              onClick={() => {
+                setOpen(false);
+                void onSignOut();
+              }}
+              role="menuitem"
+              type="button"
+            >
+              {demo ? "Leave demo" : "Sign out"}
+            </button>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function nextOperationalDate(): string {
   let date = DateTime.now().setZone("America/Toronto").startOf("day");
   while (date.weekday > 5) date = date.plus({ days: 1 });
@@ -45,6 +136,8 @@ export function DashboardApp({
   api = defaultApi,
   initialDate = nextOperationalDate(),
   eventSourceFactory = defaultEventSourceFactory,
+  session,
+  onSignOut,
 }: DashboardAppProps) {
   const [page, setPage] = useState<AppPage>("calendar");
   const [visitedPages, setVisitedPages] = useState<ReadonlySet<AppPage>>(
@@ -185,6 +278,9 @@ export function DashboardApp({
             >
               <SettingsIcon className="h-[18px] w-[18px]" />
             </button>
+            {session === undefined ? null : (
+              <SessionMenu onSignOut={onSignOut} session={session} />
+            )}
           </div>
         </div>
       </header>
