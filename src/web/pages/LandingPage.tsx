@@ -163,12 +163,125 @@ function TimelineItem({
   );
 }
 
+function MobileRecoveryDemo({ step }: { step: number }) {
+  const recovered = step >= 4;
+  const currentStage = step <= 1 ? 0 : step === 2 ? 1 : 2;
+  const stages = [
+    { label: "Detected", icon: CalendarX2 },
+    { label: "Calling", icon: PhoneCall },
+    { label: recovered ? "Booked" : "Confirming", icon: CalendarCheck2 },
+  ] as const;
+  const StageIcon = stages[currentStage].icon;
+  const headline =
+    currentStage === 0
+      ? "A 5:00 PM slot opened."
+      : currentStage === 1
+        ? "Calling Sarah now."
+        : recovered
+          ? "Sarah is booked."
+          : "Sarah said yes.";
+  const copy =
+    currentStage === 0
+      ? "Josh cancelled. Standby found the best person to call."
+      : currentStage === 1
+        ? "The voice agent is explaining the opening and answering questions."
+        : "Jeremy’s calendar updates automatically. No tab juggling required.";
+
+  return (
+    <div
+      aria-label="Animated cancellation recovery example"
+      className="hidden overflow-hidden rounded-[12px] border border-[rgba(16,23,34,0.12)] bg-landing-panel text-left shadow-[0_16px_38px_rgba(24,31,40,0.09)] max-[1050px]:mx-auto max-[1050px]:block max-[1050px]:w-[min(560px,100%)]"
+    >
+      <div className="flex items-center justify-between border-b border-[rgba(16,23,34,0.08)] px-[18px] py-[14px]">
+        <p className="m-0 text-[10px] font-extrabold uppercase tracking-[0.16em] text-landing-muted">
+          Cancellation recovery
+        </p>
+        <span
+          className={cn(
+            "rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.09em] transition-colors duration-[420ms]",
+            recovered
+              ? "bg-[#e6efe5] text-[#3f6248]"
+              : "bg-[#fde8e2] text-[#9a4635]",
+          )}
+        >
+          {recovered ? "Filled" : "In progress"}
+        </span>
+      </div>
+
+      <div className="flex min-h-[238px] flex-col justify-center px-5 py-6 text-center max-[380px]:px-4">
+        <div className="mobile-recovery-state" key={`${currentStage}-${recovered}`}>
+          <span
+            aria-hidden="true"
+            className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-landing-ink text-white"
+          >
+            <StageIcon className="h-6 w-6" strokeWidth={1.7} />
+          </span>
+          <p className="mb-0 mt-4 text-[10px] font-bold uppercase tracking-[0.14em] text-landing-muted">
+            5:00 PM · Jeremy
+          </p>
+          <h2
+            className={cn(
+              serifClass,
+              "mb-0 mt-2 text-[31px] font-normal italic leading-[1.05] tracking-[-0.035em]",
+            )}
+          >
+            {headline}
+          </h2>
+          <p className="mx-auto mb-0 mt-3 max-w-[290px] text-[13px] leading-[1.5] text-landing-muted">
+            {copy}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 border-y border-[rgba(16,23,34,0.08)]">
+        {stages.map((stage, index) => {
+          const reached = index <= currentStage;
+          const active = index === currentStage;
+
+          return (
+            <div
+              className={cn(
+                "flex min-h-[78px] flex-col items-center justify-center gap-2 border-r border-[rgba(16,23,34,0.08)] px-2 text-landing-muted transition-[background-color,color] duration-[420ms] last:border-r-0",
+                reached && "text-landing-ink",
+                active && "bg-[#fff3ef]",
+              )}
+              key={stage.label}
+            >
+              <stage.icon className="h-5 w-5" strokeWidth={reached ? 1.9 : 1.5} />
+              <span className="text-[10px] font-bold uppercase tracking-[0.08em]">
+                {stage.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex items-end justify-between gap-4 bg-landing-ink px-[18px] py-4 text-white">
+        <div>
+          <p className="mb-1 mt-0 text-[9px] font-bold uppercase tracking-[0.14em] text-[#aeb8c5]">
+            Outcome
+          </p>
+          <strong className={cn(serifClass, "text-[22px] font-normal italic")}>
+            {recovered ? "$68 recovered" : "Recovering $68…"}
+          </strong>
+        </div>
+        <span className="mb-0.5 shrink-0 rounded-full border border-[rgba(255,255,255,0.18)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#c5ced8]">
+          {recovered ? "1m 48s" : "Live"}
+        </span>
+      </div>
+      <span aria-live="polite" className="sr-only">
+        {recovered ? "The opening was filled and 68 dollars was recovered." : ""}
+      </span>
+    </div>
+  );
+}
+
 function RecoveryDemo({ step }: { step: number }) {
   const recovered = step >= 4;
 
   return (
     <div className="landing-intro-demo relative z-[2] mx-auto mt-9 w-[min(1180px,100%)] max-[720px]:mt-[30px]" id="demo">
-      <div className="overflow-hidden rounded-[14px] border border-[rgba(16,23,34,0.12)] bg-landing-panel text-left shadow-[0_18px_50px_rgba(24,31,40,0.09)] max-[720px]:rounded-[10px]">
+      <div className="overflow-hidden rounded-[14px] border border-[rgba(16,23,34,0.12)] bg-landing-panel text-left shadow-[0_18px_50px_rgba(24,31,40,0.09)] max-[1050px]:hidden">
         <div className="grid min-h-[440px] grid-cols-[minmax(0,1.23fr)_minmax(300px,0.77fr)] overflow-hidden bg-landing-panel max-[1050px]:grid-cols-1 max-[720px]:min-h-0">
           <div className="border-r border-[rgba(16,23,34,0.08)] px-7 py-6 max-[1050px]:border-b max-[1050px]:border-r-0 max-[720px]:border-b-0 max-[720px]:px-4 max-[720px]:py-[18px]">
             <h2
@@ -315,6 +428,7 @@ function RecoveryDemo({ step }: { step: number }) {
           </div>
         </div>
       </div>
+      <MobileRecoveryDemo step={step} />
     </div>
   );
 }
@@ -365,19 +479,19 @@ export function LandingPage() {
       return;
     }
 
-    let interval: number | undefined;
-    const start = window.setTimeout(() => {
-      let nextStep = 1;
-      setDemoStep(nextStep);
-      interval = window.setInterval(() => {
-        nextStep = nextStep === 4 ? 1 : nextStep + 1;
-        setDemoStep(nextStep);
-      }, 540);
-    }, 350);
+    const phaseDurations = [1100, 2200, 900, 2800] as const;
+    let timer: number | undefined;
+    let nextStep = 1;
+    const advance = () => {
+      const activeStep = nextStep;
+      setDemoStep(activeStep);
+      nextStep = activeStep === 4 ? 1 : activeStep + 1;
+      timer = window.setTimeout(advance, phaseDurations[activeStep - 1]);
+    };
+    timer = window.setTimeout(advance, 350);
 
     return () => {
-      window.clearTimeout(start);
-      if (interval !== undefined) window.clearInterval(interval);
+      if (timer !== undefined) window.clearTimeout(timer);
     };
   }, []);
 
