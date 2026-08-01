@@ -137,7 +137,7 @@ function TimelineItem({
   return (
     <div
       className={cn(
-        "relative z-[1] grid min-h-[68px] grid-cols-[40px_1fr_auto] items-center gap-3 rounded-[8px] border px-[13px] py-[9px] pl-2 transition-[opacity,background-color,border-color,transform,box-shadow] duration-[420ms] max-[720px]:grid-cols-[40px_1fr]",
+        "relative z-[1] grid min-h-[68px] grid-cols-[40px_1fr_auto] items-center gap-3 rounded-[8px] border px-[13px] py-[9px] pl-2 transition-[opacity,background-color,border-color,transform,box-shadow] duration-[420ms] max-[720px]:min-h-[64px] max-[720px]:grid-cols-[38px_1fr] max-[720px]:gap-2.5 max-[720px]:px-2.5 max-[720px]:py-2",
         active
           ? "translate-y-0 border-[rgba(16,23,34,0.08)] bg-white opacity-100 shadow-[0_5px_14px_rgba(16,23,34,0.06)]"
           : "translate-y-1 border-transparent bg-[#f4f3ee] opacity-[0.46]",
@@ -146,7 +146,7 @@ function TimelineItem({
       <span
         aria-hidden="true"
         className={cn(
-          "grid h-[38px] w-[38px] place-items-center rounded-[9px] border border-[rgba(67,84,107,0.16)] bg-[#f3f5f7] text-[#526176] transition-[color,background-color,border-color] duration-[420ms]",
+          "grid h-[38px] w-[38px] place-items-center rounded-[9px] border border-[rgba(67,84,107,0.16)] bg-[#f3f5f7] text-[#526176] transition-[color,background-color,border-color] duration-[420ms] max-[720px]:h-9 max-[720px]:w-9",
           active && "border-[#c9d2dc] bg-[#eaf0f6] text-[#34465d]",
         )}
       >
@@ -169,12 +169,12 @@ function RecoveryDemo({ step }: { step: number }) {
   return (
     <div className="landing-intro-demo relative z-[2] mx-auto mt-9 w-[min(1180px,100%)] max-[720px]:mt-[30px]" id="demo">
       <div className="overflow-hidden rounded-[14px] border border-[rgba(16,23,34,0.12)] bg-landing-panel text-left shadow-[0_18px_50px_rgba(24,31,40,0.09)] max-[720px]:rounded-[10px]">
-        <div className="grid min-h-[440px] grid-cols-[minmax(0,1.23fr)_minmax(300px,0.77fr)] overflow-hidden bg-landing-panel max-[1050px]:grid-cols-1">
-          <div className="border-r border-[rgba(16,23,34,0.08)] px-7 py-6 max-[1050px]:border-b max-[1050px]:border-r-0 max-[720px]:px-4 max-[720px]:py-5">
+        <div className="grid min-h-[440px] grid-cols-[minmax(0,1.23fr)_minmax(300px,0.77fr)] overflow-hidden bg-landing-panel max-[1050px]:grid-cols-1 max-[720px]:min-h-0">
+          <div className="border-r border-[rgba(16,23,34,0.08)] px-7 py-6 max-[1050px]:border-b max-[1050px]:border-r-0 max-[720px]:border-b-0 max-[720px]:px-4 max-[720px]:py-[18px]">
             <h2
               className={cn(
                 serifClass,
-                "m-0 text-[32px] font-normal italic tracking-[-0.035em] max-[720px]:text-[27px]",
+                "m-0 text-[32px] font-normal italic tracking-[-0.035em] max-[720px]:text-[25px] max-[720px]:leading-[1.14]",
               )}
             >
               Cancellation detected. Voice agent already calling.
@@ -182,7 +182,7 @@ function RecoveryDemo({ step }: { step: number }) {
 
             <div
               aria-label="Animated cancellation recovery example"
-              className="relative mt-[18px] grid gap-1.5 before:absolute before:bottom-[30px] before:left-[22px] before:top-[30px] before:z-0 before:w-px before:bg-[#dedfdc] before:content-['']"
+              className="relative mt-[18px] grid gap-1.5 before:absolute before:bottom-[30px] before:left-[22px] before:top-[30px] before:z-0 before:w-px before:bg-[#dedfdc] before:content-[''] max-[720px]:mt-4 max-[720px]:gap-2 max-[720px]:before:hidden"
             >
               <TimelineItem
                 active={step >= 1}
@@ -207,22 +207,22 @@ function RecoveryDemo({ step }: { step: number }) {
               />
             </div>
 
-            <div className="mt-[14px] flex items-center justify-between gap-5 rounded-[8px] bg-landing-ink px-[18px] py-4 text-[#e9f1e8] max-[720px]:items-start max-[720px]:flex-col">
+            <div className="mt-[14px] flex items-center justify-between gap-5 rounded-[8px] bg-landing-ink px-[18px] py-4 text-[#e9f1e8] max-[720px]:gap-3 max-[720px]:px-[14px] max-[720px]:py-[13px]">
               <div>
                 <p className="mb-1 mt-0 text-[10px] font-bold uppercase tracking-[0.12em] text-[#aeb8c5]">
                   Outcome
                 </p>
-                <strong className={cn(serifClass, "text-[24px] font-normal italic")}>
+                <strong className={cn(serifClass, "text-[24px] font-normal italic max-[720px]:text-[21px]")}>
                   {recovered ? "Opening filled in 1m 48s" : "Recovering revenue…"}
                 </strong>
               </div>
-              <span className="text-[32px] font-semibold tracking-[-0.06em] text-white">
+              <span className="shrink-0 text-[32px] font-semibold tracking-[-0.06em] text-white max-[720px]:text-[28px]">
                 {recovered ? "$68" : "$0"}
               </span>
             </div>
           </div>
 
-          <div className="landing-schedule-grid flex min-h-0 flex-col px-6 pb-[22px] pt-6 max-[1050px]:min-h-[400px] max-[720px]:min-h-[380px] max-[720px]:px-4 max-[720px]:py-5">
+          <div className="landing-schedule-grid flex min-h-0 flex-col px-6 pb-[22px] pt-6 max-[1050px]:min-h-[400px] max-[720px]:hidden">
             <div className="mb-4 flex items-center justify-between">
               <p className="m-0 text-[13px] font-bold">Jeremy’s afternoon</p>
               <span className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#969ca5]">
@@ -327,7 +327,7 @@ export function LandingPage() {
     const root = document.documentElement;
     const previousScrollBehavior = root.style.scrollBehavior;
     const previousBackgroundColor = root.style.backgroundColor;
-    document.title = "Standby — Empty time, filled beautifully.";
+    document.title = "Standby — Empty time, filled automatically.";
     root.style.scrollBehavior = "smooth";
     root.style.backgroundColor = "#f2f0e9";
 
@@ -438,10 +438,10 @@ export function LandingPage() {
               <em
                 className={cn(
                   serifClass,
-                  "landing-intro-line landing-intro-line--two block pb-[0.13em] pt-[0.05em] text-[0.93em] font-normal leading-[0.92] tracking-[-0.045em]",
+                  "landing-intro-line landing-intro-line--two block pb-[0.13em] pt-[0.05em] text-[0.93em] font-normal leading-[0.92] tracking-[-0.045em] max-[720px]:text-[0.72em] max-[720px]:leading-[0.98] max-[720px]:tracking-[-0.035em] max-[380px]:text-[0.68em]",
                 )}
               >
-                filled beautifully.
+                filled automatically.
               </em>
             </h1>
             <p className="landing-intro-copy mx-auto w-[min(690px,100%)] text-[clamp(17px,1.8vw,21px)] leading-[1.55] tracking-[-0.018em] text-landing-muted max-[720px]:w-[min(92%,540px)] max-[720px]:text-[16px]">
@@ -631,12 +631,12 @@ export function LandingPage() {
               ))}
             </div>
 
-            <div className="landing-reveal mx-auto mt-[70px] grid max-w-[1300px] grid-cols-[290px_minmax(0,1fr)] items-center gap-12 max-[1050px]:max-w-[860px] max-[1050px]:grid-cols-1 max-[1050px]:gap-[34px] max-[720px]:mt-14 max-[720px]:gap-7">
-              <div className="flex items-center gap-6 max-[720px]:order-2 max-[720px]:gap-[18px]">
+            <div className="landing-reveal mx-auto mt-[70px] grid max-w-[1300px] grid-cols-[290px_minmax(0,1fr)] items-center gap-12 max-[1050px]:max-w-[860px] max-[1050px]:grid-cols-1 max-[1050px]:gap-[34px] max-[720px]:mt-14 max-[720px]:gap-5 max-[720px]:rounded-[14px] max-[720px]:border max-[720px]:border-[rgba(255,255,255,0.12)] max-[720px]:bg-[rgba(255,255,255,0.025)] max-[720px]:p-5">
+              <div className="flex items-center gap-6 max-[720px]:order-1 max-[720px]:gap-4">
                 <img
                   alt=""
                   aria-hidden="true"
-                  className="h-[164px] w-[164px] shrink-0 rounded-full border-2 border-[rgba(255,255,255,0.45)] object-cover shadow-[0_0_0_1px_rgba(255,255,255,0.12)] max-[720px]:h-[88px] max-[720px]:w-[88px]"
+                  className="h-[164px] w-[164px] shrink-0 rounded-full border-2 border-[rgba(255,255,255,0.45)] object-cover shadow-[0_0_0_1px_rgba(255,255,255,0.12)] max-[720px]:h-[76px] max-[720px]:w-[76px]"
                   decoding="async"
                   height="256"
                   loading="lazy"
@@ -653,12 +653,12 @@ export function LandingPage() {
               <blockquote
                 className={cn(
                   serifClass,
-                  "m-0 text-[clamp(31px,3.5vw,51px)] italic leading-[1.08] tracking-[-0.04em] max-[720px]:order-1 max-[720px]:text-[clamp(31px,9vw,38px)] max-[720px]:leading-[1.12] max-[720px]:tracking-[-0.03em]",
+                  "m-0 text-[clamp(31px,3.5vw,51px)] italic leading-[1.08] tracking-[-0.04em] max-[720px]:order-2 max-[720px]:border-t max-[720px]:border-[rgba(255,255,255,0.12)] max-[720px]:pt-5 max-[720px]:text-[clamp(28px,7.7vw,34px)] max-[720px]:leading-[1.14] max-[720px]:tracking-[-0.025em]",
                 )}
               >
                 “Wowie, this is so awesome sauce!!! Anyways, have you guys heard of{" "}
                 <a
-                  className="underline decoration-[1.5px] underline-offset-[0.12em] transition-opacity hover:opacity-70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4"
+                  className="underline decoration-[1.5px] underline-offset-[0.12em] transition-opacity hover:opacity-70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 max-[720px]:inline-block max-[720px]:whitespace-nowrap"
                   href="https://one-million-notes.vercel.app/"
                   rel="noreferrer"
                   target="_blank"
@@ -691,16 +691,14 @@ export function LandingPage() {
               </a>
             </div>
 
-            <footer className="mt-10 border-t border-[rgba(16,23,34,0.2)] px-1 py-6 text-landing-ink">
-              <div className="flex items-center justify-between gap-8 max-[720px]:flex-col max-[720px]:items-start max-[720px]:gap-4">
-                <div className="flex items-center gap-4 max-[520px]:items-start">
-                  <Brand compact />
-                  <span aria-hidden="true" className="h-7 w-px bg-[rgba(16,23,34,0.2)]" />
-                  <p className="m-0 max-w-[310px] text-[13px] leading-5 text-[rgba(16,23,34,0.68)]">
-                    Voice agents for cancelled appointments.
-                  </p>
-                </div>
-                <nav aria-label="Standby links" className="flex items-center gap-1 max-[720px]:-ml-3">
+            <footer className="mt-10 border-t border-[rgba(16,23,34,0.2)] px-1 py-6 text-landing-ink max-[720px]:mt-7 max-[720px]:px-0 max-[720px]:py-5">
+              <div className="grid grid-cols-[auto_1px_minmax(0,1fr)_auto] items-center gap-4 max-[720px]:grid-cols-[minmax(0,1fr)_auto] max-[720px]:gap-x-4 max-[720px]:gap-y-3">
+                <Brand compact />
+                <span aria-hidden="true" className="h-7 w-px bg-[rgba(16,23,34,0.2)] max-[720px]:hidden" />
+                <p className="m-0 max-w-[310px] text-[13px] leading-5 text-[rgba(16,23,34,0.68)] max-[720px]:col-span-2 max-[720px]:row-start-2 max-[720px]:max-w-none">
+                  Voice agents for cancelled appointments.
+                </p>
+                <nav aria-label="Standby links" className="flex items-center gap-1 max-[720px]:col-start-2 max-[720px]:row-start-1 max-[720px]:justify-self-end">
                   <a
                     className={footerLinkClass}
                     href="https://github.com/EvanJYHe/standby"

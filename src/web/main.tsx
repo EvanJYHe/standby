@@ -17,7 +17,7 @@ const RoutedApp = isProductRoute
 
 document.title = isProductRoute
   ? "Standby — Front desk"
-  : "Standby — Empty time, filled beautifully.";
+  : "Standby — Empty time, filled automatically.";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

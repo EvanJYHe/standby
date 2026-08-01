@@ -5,7 +5,7 @@
 <h1 align="center">Standby</h1>
 
 <p align="center">
-  <strong>Empty time, filled beautifully.</strong><br />
+  <strong>Empty time, filled automatically.</strong><br />
   AI voice agents that turn cancelled appointments into confirmed bookings.
 </p>
 
