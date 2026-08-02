@@ -1,5 +1,6 @@
 import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
+import { Analytics } from "@vercel/analytics/react";
 
 import "./styles.css";
 
@@ -24,5 +25,6 @@ createRoot(document.getElementById("root")!).render(
     <Suspense fallback={<div className="min-h-screen bg-canvas" />}>
       <RoutedApp />
     </Suspense>
+    <Analytics />
   </StrictMode>,
 );
