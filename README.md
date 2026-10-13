@@ -1,105 +1,58 @@
 <p align="center">
-  <img src="docs/images/standby.png" alt="Standby landing page" width="100%" />
+  <img src="docs/images/standby.png" alt="The Standby landing page" width="100%" />
 </p>
 
 <h1 align="center">Standby</h1>
 
 <p align="center">
   <strong>Empty time, filled automatically.</strong><br />
-  AI voice agents that turn cancelled appointments into confirmed bookings.
+  A Mac menu-bar app that refills cancelled appointments from your Google Calendar.
 </p>
 
-Standby is a hackathon-built scheduling demo for appointment businesses. When a
-cancellation opens a slot, it ranks suitable customers, starts the outreach,
-and records the first confirmed replacement back onto the calendar.
+Standby watches the Google Calendars you choose. When an appointment is cancelled, the slot shows up in the menu
+bar as an opening. Standby picks the best person on your waitlist (the service they want first, then who has waited
+longest), offers them the slot, and when they say yes, one click books them into it on your Google Calendar.
 
-The interface is the product: a polished landing page and a seeded front-desk
-workspace that can be explored without provider credentials or external data.
-The original voice, messaging, and persistence adapters remain available for
-experimentation, but the default runtime is deliberately self-contained.
+Calls are simulated in this version, and the app says so. Bookings are real.
 
-## Product loop
-
-1. A cancellation creates an opening with a service, employee, time, and value.
-2. Eligible customers are ranked from the waitlist and upcoming schedule.
-3. The demo agent offers the opening with the relevant context.
-4. Availability and consent are checked again before the booking is committed.
-5. The calendar, conversation ledger, and customer record update together.
-
-## Architecture
-
-```mermaid
-flowchart LR
-    WEB["React workspace"] --> API["Fastify API"]
-    API --> ENGINE["Scheduling engine"]
-    ENGINE --> DEMO["Seeded memory store"]
-    ENGINE -. optional .-> MONGO["MongoDB"]
-    ENGINE -. opt-in .-> ROUTER["Outreach router"]
-    ROUTER -. typed adapter .-> VOICE["ElevenLabs"]
-    ROUTER -. typed adapter .-> CHAT["Telegram"]
-    ROUTER -. optional copy .-> COPY["Backboard"]
-    API --> EVENTS["Server-sent events"]
-    EVENTS --> WEB
-```
-
-The language model side can propose actions; the TypeScript domain layer owns
-identity, consent, availability, conflicts, offer expiry, and state mutation.
-That separation keeps the interesting scheduling logic deterministic even when
-the conversational integrations are not configured.
-
-Voice outreach sits behind a provider-neutral `VoiceCallProvider` contract.
-The scheduling workflow sends typed customer, offer, and appointment context;
-the ElevenLabs adapter alone translates that context into provider variables.
-Recipients come from persisted customer records rather than environment-coded
-demo people, and unreachable channels are skipped before an offer is consumed.
-
-Both `OUTREACH_WORKER_ENABLED` and `VOICE_OUTBOUND_ENABLED` default to `false`.
-Provider setup and demo-call scripts are dry runs unless an explicit execution
-flag is supplied, so adding credentials cannot place a call by accident.
-
-## Tech stack
-
-| Layer | Technology |
-| --- | --- |
-| Frontend | React, TypeScript, Vite, Tailwind CSS, Lucide |
-| API | Node.js, Fastify, Zod, Pino |
-| Scheduling | TypeScript state transitions, Luxon, optimistic version checks |
-| Demo data | Seeded in-memory store |
-| Optional integrations | MongoDB, Backboard, ElevenLabs, Telegram |
-| Live updates | Server-sent events |
-| Hosting | Vercel static CDN and serverless functions |
-| Quality | Vitest, Testing Library, TypeScript |
-
-## Project map
+## What's here
 
 ```text
-src/web/               landing page and operator workspace
-src/domain/            scheduling rules and recovery engine
-src/server/            API, seeded demo state, and provider adapters
-api/handler.ts         Vercel serverless bridge
-public/landing/        optimized brand and landing assets
+mac/                 Standby for Mac: a Swift package, SwiftUI on AppKit (see mac/README.md)
+src/web/             the landing page
+public/downloads/    Standby.dmg, built by mac/scripts/build.sh
+public/landing/v2/   the mark, app icon, film, photos and the app's own renders
 ```
 
-## Run locally
+## The Mac app
+
+macOS 14 or later, Apple silicon and Intel. It builds with the Command Line Tools alone:
+
+```bash
+cd mac
+scripts/build.sh                 # Standby.app and public/downloads/Standby.dmg
+scripts/build.sh --screenshots   # also re-renders the app screenshots the landing page uses
+```
+
+Without a Google OAuth client the app runs on a built-in sample calendar, so a downloaded copy always works.
+[mac/README.md](mac/README.md) covers connecting Google, how cancellations are detected, testing, and opening the
+ad-hoc-signed app the first time.
+
+## The landing page
 
 ```bash
 npm install
-npm run dev
+npm run dev     # http://127.0.0.1:5174
+npm run check   # typecheck, tests and the production build
 ```
 
-Open `http://127.0.0.1:5174` for the landing page and `/app` for the product.
-The default command always uses the seeded memory store, so it works without an
-`.env` file. Copy `.env.example` and run `npm run dev:api:integrations` only when
-working on the optional provider adapters.
+The site is static: Vercel serves `dist/`, and the old web demo's `/app` redirects to `/`.
 
-## Google Calendar access
+## Stack
 
-The Calendar workspace can request real event access through the Google
-Identity Services popup. Enable the Google Calendar API, create a **Web
-application** OAuth client, add the app's exact local and production origins,
-then set its public ID as `GOOGLE_OAUTH_CLIENT_ID`.
-
-Standby requests event read/write and calendar-list access, proves the grant
-against the Calendar API, and keeps the short-lived access token in browser
-memory only. This intentionally supports an interactive demo session—not
-background sync or stored refresh tokens.
+| Part | Technology |
+| --- | --- |
+| Mac app | Swift 6, SwiftUI and AppKit; Google OAuth (PKCE, loopback) and Calendar API v3 over URLSession |
+| Landing page | React, TypeScript, Vite, Tailwind CSS; Instrument Serif and Geist |
+| Tests | swift-testing; Vitest and Testing Library |
+| Hosting | Vercel |
