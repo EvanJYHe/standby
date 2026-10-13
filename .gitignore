@@ -10,3 +10,6 @@ tmp/
 .worktrees/
 *.log
 .vercel
+mac/.build/
+mac/dist/
+mac/Config.local.json
