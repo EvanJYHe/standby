@@ -3,27 +3,19 @@ import { createRoot } from "react-dom/client";
 import { Analytics } from "@vercel/analytics/react";
 
 import "./styles.css";
+import { preloadLandingFonts, waitForLandingFonts } from "./landing/fonts.js";
 
-const normalizedPath = window.location.pathname.replace(/\/+$/, "") || "/";
-const isProductRoute = normalizedPath === "/app";
-const RoutedApp = isProductRoute
-  ? lazy(async () => {
-    const module = await import("./auth/ProductEntry.js");
-    return { default: module.ProductEntry };
-  })
-  : lazy(async () => {
-    const module = await import("./pages/LandingPage.js");
-    return { default: module.LandingPage };
-  });
-
-document.title = isProductRoute
-  ? "Standby — Front desk"
-  : "Standby — Empty time, filled automatically.";
+const LandingPage = lazy(async () => {
+  preloadLandingFonts();
+  const module = await import("./pages/LandingPage.js");
+  await waitForLandingFonts();
+  return { default: module.LandingPage };
+});
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <Suspense fallback={<div className="min-h-screen bg-canvas" />}>
-      <RoutedApp />
+    <Suspense fallback={<div className="min-h-screen bg-sb-mist" />}>
+      <LandingPage />
     </Suspense>
     <Analytics />
   </StrictMode>,
